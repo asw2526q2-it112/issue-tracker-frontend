@@ -1,32 +1,25 @@
 "use client";
 
-import { AlertCircle, Copy, Eye, List, MessageSquare, User } from "lucide-react";
+import { AlertCircle, List, MessageSquare } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
-import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useCurrentUser } from "@/lib/auth/current-user";
-import { AvatarControls } from "@/features/users/components/avatar-controls";
-import { EditProfileForm } from "@/features/users/components/edit-profile-form";
 import {
   AvatarBlock,
   CommentList,
   IssueTable,
   Stat,
 } from "@/features/users/components/profile-parts";
-import { useMe, useUpdateMe } from "@/features/users/queries";
+import { useUser } from "@/features/users/queries";
 
-const TAB_VALUES = ["edit", "assigned", "watched", "comments"] as const;
+const TAB_VALUES = ["assigned", "comments"] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
-export function ProfileView() {
-  const local = useCurrentUser();
-  const { data, isLoading, error } = useMe();
-  const updateMe = useUpdateMe();
+export function PublicProfileView({ username }: { username: string }) {
+  const { data, isLoading, error } = useUser(username);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -36,7 +29,7 @@ export function ProfileView() {
     rawTab ?? "",
   )
     ? (rawTab as TabValue)
-    : "edit";
+    : "assigned";
 
   const setTab = useCallback(
     (value: string) => {
@@ -47,7 +40,7 @@ export function ProfileView() {
     [pathname, router, searchParams],
   );
 
-  if (isLoading) return <ProfileSkeleton />;
+  if (isLoading) return <PublicProfileSkeleton />;
 
   if (error || !data) {
     return (
@@ -55,7 +48,7 @@ export function ProfileView() {
         <CardContent className="flex items-center gap-3 pt-6">
           <AlertCircle className="text-destructive h-5 w-5" />
           <p className="text-sm">
-            Couldn&apos;t load profile:{" "}
+            Couldn&apos;t load @{username}:{" "}
             {error instanceof Error ? error.message : "Unknown error"}
           </p>
         </CardContent>
@@ -64,8 +57,7 @@ export function ProfileView() {
   }
 
   const fullName =
-    `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim() ||
-    local.displayName;
+    `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim() || data.username;
   const firstInitial = (data.username[0] ?? "?").toUpperCase();
 
   return (
@@ -77,9 +69,7 @@ export function ProfileView() {
           fallbackInitial={firstInitial}
         />
 
-        <AvatarControls me={data} />
-
-        <div className="mt-4 mb-4">
+        <div className="mb-4">
           <h2 className="text-primary text-xl leading-tight font-medium">
             {fullName}
           </h2>
@@ -89,8 +79,10 @@ export function ProfileView() {
         <div className="bg-border mb-4 h-px w-full" />
 
         <div className="mb-4 flex justify-between gap-2 text-center">
-          <Stat number={data.assigned.length} label={<>Assigned<br />Issues</>} />
-          <Stat number={data.watched.length} label={<>Watched<br />Issues</>} />
+          <Stat
+            number={data.assigned.length}
+            label={<>Assigned<br />Issues</>}
+          />
           <Stat number={data.comments.length} label="Comments" />
         </div>
 
@@ -106,17 +98,9 @@ export function ProfileView() {
       <div className="min-w-0 flex-1">
         <Tabs value={activeTab} onValueChange={setTab}>
           <TabsList variant="line" className="w-full justify-start border-b">
-            <TabsTrigger value="edit" className="gap-2 px-4 py-2.5">
-              <User className="opacity-60 [&]:stroke-[1.5]" />
-              Edit Profile
-            </TabsTrigger>
             <TabsTrigger value="assigned" className="gap-2 px-4 py-2.5">
               <List className="opacity-60 [&]:stroke-[1.5]" />
               Assigned Issues
-            </TabsTrigger>
-            <TabsTrigger value="watched" className="gap-2 px-4 py-2.5">
-              <Eye className="opacity-60 [&]:stroke-[1.5]" />
-              Watched Issues
             </TabsTrigger>
             <TabsTrigger value="comments" className="gap-2 px-4 py-2.5">
               <MessageSquare className="opacity-60 [&]:stroke-[1.5]" />
@@ -124,23 +108,10 @@ export function ProfileView() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="edit" className="mt-5 flex flex-col gap-8">
-            <EditProfileForm
-              me={data}
-              submitting={updateMe.isPending}
-              onSubmit={async (values) => {
-                await updateMe.mutateAsync(values);
-              }}
-            />
-            <ApiTokenCard token={local.token} />
-          </TabsContent>
           <TabsContent value="assigned" className="mt-5">
-            <IssueTable issues={data.assigned} empty="No assigned issues." />
-          </TabsContent>
-          <TabsContent value="watched" className="mt-5">
             <IssueTable
-              issues={data.watched}
-              empty="You are not watching any issues."
+              issues={data.assigned}
+              empty={`@${data.username} has no assigned issues.`}
             />
           </TabsContent>
           <TabsContent value="comments" className="mt-5">
@@ -152,34 +123,7 @@ export function ProfileView() {
   );
 }
 
-function ApiTokenCard({ token }: { token: string }) {
-  async function copy() {
-    await navigator.clipboard.writeText(token);
-    toast.success("Token copied to clipboard.");
-  }
-
-  return (
-    <section className="bg-card flex flex-col gap-3 rounded-md border p-5">
-      <header>
-        <h3 className="text-lg font-medium">API Token</h3>
-        <p className="text-muted-foreground text-sm">
-          Use with{" "}
-          <code className="font-mono">Authorization: Token &lt;value&gt;</code>{" "}
-          to call the REST API from scripts.
-        </p>
-      </header>
-      <div className="bg-muted flex items-center gap-2 rounded-md p-3 font-mono text-sm">
-        <code className="flex-1 truncate">{token}</code>
-        <Button type="button" size="sm" variant="ghost" onClick={copy}>
-          <Copy className="h-4 w-4" />
-          Copy
-        </Button>
-      </div>
-    </section>
-  );
-}
-
-function ProfileSkeleton() {
+function PublicProfileSkeleton() {
   return (
     <div className="flex flex-col gap-10 md:flex-row">
       <aside className="flex w-full shrink-0 flex-col gap-3 md:w-40">
@@ -189,11 +133,10 @@ function ProfileSkeleton() {
         <div className="mt-4 flex gap-2">
           <Skeleton className="h-12 flex-1" />
           <Skeleton className="h-12 flex-1" />
-          <Skeleton className="h-12 flex-1" />
         </div>
       </aside>
       <div className="flex flex-1 flex-col gap-4">
-        <Skeleton className="h-10 w-80" />
+        <Skeleton className="h-10 w-60" />
         <Skeleton className="h-24 w-full" />
         <Skeleton className="h-24 w-full" />
       </div>

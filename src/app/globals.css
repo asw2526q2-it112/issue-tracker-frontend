@@ -49,42 +49,45 @@
 }
 
 /*
- * Taiga-inspired palette, mirroring the Django app at issue-tracker/static/css/global.css.
- * Primary teal #25c2a0 is the signature Taiga green.
+ * Real-Taiga palette, sourced from taigaio/taiga-front (variables.scss).
+ * Primary teal #25A28C is Taiga's signature green; the dark sidebar is the
+ * Nord-style polar-night slate Taiga uses for the project menu.
  */
 :root {
-  --background: #f4f5f5;
-  --foreground: #333333;
+  --background: #f9f9fb;
+  --foreground: #2e3440;
   --card: #ffffff;
-  --card-foreground: #333333;
+  --card-foreground: #2e3440;
   --popover: #ffffff;
-  --popover-foreground: #333333;
-  --primary: #25c2a0;
+  --popover-foreground: #2e3440;
+  --primary: #25a28c;
   --primary-foreground: #ffffff;
-  --secondary: #f3f4f6;
-  --secondary-foreground: #2c3e50;
-  --muted: #f3f4f6;
-  --muted-foreground: #6b7280;
-  --accent: #7de8d4;
-  --accent-foreground: #0f766e;
-  --destructive: #ef4444;
-  --border: #e0e0e0;
-  --input: #d1d5db;
-  --ring: #25c2a0;
-  --chart-1: #25c2a0;
-  --chart-2: #7de8d4;
-  --chart-3: #0098a6;
-  --chart-4: #f29e9e;
-  --chart-5: #9b59b6;
+  --secondary: #eceff4;
+  --secondary-foreground: #2e3440;
+  --muted: #eceff4;
+  --muted-foreground: #70728f;
+  --accent: #c9e8e2;
+  --accent-foreground: #25a28c;
+  --destructive: #e44057;
+  --border: #d8dee9;
+  --input: #d8dee9;
+  --ring: #25a28c;
+  /* Taiga 6 status palette */
+  --chart-1: #e44057;
+  --chart-2: #ea7b4b;
+  --chart-3: #f6c95c;
+  --chart-4: #93c45d;
+  --chart-5: #ca81be;
   --radius: 0.5rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #333333;
-  --sidebar-primary: #25c2a0;
+  /* Dark sidebar, matching Taiga's tg-project-menu */
+  --sidebar: #3b4252;
+  --sidebar-foreground: #e5e9f0;
+  --sidebar-primary: #25a28c;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f3f4f6;
-  --sidebar-accent-foreground: #2c3e50;
-  --sidebar-border: #e3e9eb;
-  --sidebar-ring: #25c2a0;
+  --sidebar-accent: #434c5e;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #434c5e;
+  --sidebar-ring: #25a28c;
 }
 
 .dark {

@@ -36,8 +36,32 @@ export function unwrap<T>(result: {
   error?: unknown;
   response: Response;
 }): T {
-  if (result.error !== undefined || result.data === undefined) {
+  // 204 No Content responses (e.g. DELETE) have no body — that's success, not
+  // an error. Trust the HTTP status, not the presence of `data`.
+  if (!result.response.ok) {
     throw new ApiError(result.response.status, result.error);
   }
-  return result.data;
+  return result.data as T;
+}
+
+/**
+ * Direct fetch for multipart uploads — openapi-fetch's types don't model
+ * multipart bodies well, and the browser needs to set Content-Type with a
+ * boundary itself, so we bypass the typed client here.
+ */
+export async function uploadMultipart<T>(
+  path: string,
+  formData: FormData,
+): Promise<T> {
+  const { token } = getCurrentUser();
+  const res = await fetch(`${env.NEXT_PUBLIC_API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: { Authorization: `Token ${token}` },
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError(res.status, body);
+  }
+  return res.json() as Promise<T>;
 }

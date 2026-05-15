@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Auto-generated from the Django OpenAPI spec.
+    "src/lib/api/schema.ts",
   ]),
 ]);
 

@@ -1,7 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueries, useQueryClient } from "@tanstack/react-query";
 
 import { api, unwrap, uploadMultipart } from "@/lib/api/client";
 import { qk } from "@/lib/query/keys";
+import { USERS } from "@/lib/auth/users"; 
 
 import type { components } from "@/lib/api/schema";
 
@@ -73,4 +74,28 @@ export function useRemoveAvatar() {
       queryClient.invalidateQueries({ queryKey: qk.me.all });
     },
   });
+}
+
+/**
+ * Fetches the public profile of every hardcoded user in USERS.
+ * Reuses the same query key as useUser() so results are shared from cache.
+ */
+export function useUsers() {
+  const results = useQueries({
+    queries: USERS.map((u) => ({
+      queryKey: ["users", "detail", u.username] as const,
+      queryFn: async () =>
+        unwrap(
+          await api.GET("/api/users/{username}/", {
+            params: { path: { username: u.username } },
+          }),
+        ),
+      staleTime: 5 * 60 * 1000,
+    })),
+  });
+
+  return {
+    data: results.flatMap((r) => (r.data ? [r.data] : [])),
+    isLoading: results.some((r) => r.isLoading),
+  };
 }

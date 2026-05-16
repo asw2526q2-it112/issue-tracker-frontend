@@ -23,4 +23,7 @@ export const qk = {
     types: () => [...qk.settings.all, "types"] as const,
     tags: () => [...qk.settings.all, "tags"] as const,
   },
+  users: {
+    profile: (username: string) => ["users", username] as const,
+  },
 } as const;

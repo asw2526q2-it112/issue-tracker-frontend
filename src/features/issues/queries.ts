@@ -58,3 +58,16 @@ export function useBulkCreateIssues() {
     },
   });
 }
+
+export function useDeleteIssue() {
+  const qc = useQueryClient();
+  return useMutation({
+    // Cridem al mètode DELETE tipat passant-li l'ID per la URL
+    mutationFn: async (id: number) =>
+      unwrap(await api.DELETE("/api/issues/{id}/", { params: { path: { id } } })),
+    onSuccess: () => {
+      // Quan s'esborri correctament, invalidem la llista perquè React Query la torni a carregar automàticament
+      void qc.invalidateQueries({ queryKey: qk.issues.list({}) });
+    },
+  });
+}

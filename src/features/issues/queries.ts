@@ -84,3 +84,28 @@ export function useUpdateIssue() {
     },
   });
 }
+
+export function useAddIssueTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    // Fem servir el tipus correcte de l'esquema per al paràmetre data
+    mutationFn: async ({ id, data }: { id: number; data: components["schemas"]["TagAttachWriteRequest"] }) =>
+      unwrap(await api.POST("/api/issues/{id}/tags/", { params: { path: { id } }, body: data })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+      void qc.invalidateQueries({ queryKey: qk.issues.list({}) });
+    },
+  });
+}
+
+export function useRemoveIssueTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, tagId }: { id: number; tagId: number }) =>
+      unwrap(await api.DELETE("/api/issues/{id}/tags/{tag_id}/", { params: { path: { id, tag_id: tagId } } })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+      void qc.invalidateQueries({ queryKey: qk.issues.list({}) });
+    },
+  });
+}

@@ -33,7 +33,7 @@ function StatusDropdown({
   canEdit,
   colorMap // Necessitem els colors aquí!
 }: {
-  issueStatus: any;
+  issueStatus: unknown;
   options: SettingOption[];
   onSelect: (id: number) => void;
   canEdit: boolean;
@@ -51,7 +51,7 @@ function StatusDropdown({
   }, []);
 
   const statusName = getFieldName(issueStatus);
-  const isClosed = issueStatus && typeof issueStatus === 'object' && (issueStatus as any).is_closed;
+  const isClosed = issueStatus && typeof issueStatus === 'object' && (issueStatus as { is_closed?: boolean }).is_closed;
 
   // Agafem el color actual (si no el troba, posa un gris per defecte)
   const currentColor = colorMap[statusName] || "#6c757d";
@@ -330,7 +330,7 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
             <h2 className="text-3xl font-normal mb-6 text-foreground">Delete issue</h2>
             <p className="text-lg mb-2 font-medium">Are you sure you want to delete?</p>
             <p className="text-base text-muted-foreground mb-10">
-              {/* @ts-ignore */}
+
               {issue.subject || `Issue ${issue.id}`}
             </p>
             <div className="flex items-center gap-6">

@@ -12,7 +12,6 @@ type IssueDetail = components["schemas"]["IssueDetail"];
 
 interface IssueHeaderProps {
   issue: IssueDetail;
-  colorMap: Record<string, string>;
   canEdit: boolean;
 }
 
@@ -20,7 +19,7 @@ function initials(username: string) {
   return username.slice(0, 2).toUpperCase();
 }
 
-export function IssueHeader({ issue, colorMap, canEdit }: IssueHeaderProps) {
+export function IssueHeader({ issue, canEdit }: IssueHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(issue.subject);
 

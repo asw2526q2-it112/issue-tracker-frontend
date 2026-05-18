@@ -16,6 +16,7 @@ import { IssueSidebar } from "./IssueSidebar";
 import { IssueDescription } from "./IssueDescription";
 import { IssueAttachments } from "./IssueAttachments";
 import { IssueActivity } from "./IssueActivity";
+import { components } from "@/lib/api/schema";
 
 function buildColorMap(
   ...groups: Array<{ name: string; color: string }[] | undefined>
@@ -68,9 +69,8 @@ export function IssueDetailView({ issueId }: IssueDetailViewProps) {
     );
   }
 
-  // Comprovem si som els creadors!
   const currentUser = getCurrentUser();
-  const creator = issue.creator as any;
+  const creator = issue.creator as components["schemas"]["UserMini"] | null | undefined;
   const canEdit = Boolean(currentUser && creator && currentUser.username === creator.username);
 
   return (
@@ -78,7 +78,7 @@ export function IssueDetailView({ issueId }: IssueDetailViewProps) {
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Left Column - Main Content */}
         <div className="flex-1 flex flex-col gap-8 min-w-0">
-          <IssueHeader issue={issue} colorMap={colorMap} canEdit={canEdit} />
+          <IssueHeader issue={issue} canEdit={canEdit} />
 
           <div className="flex flex-col gap-6">
             <IssueDescription issue={issue} canEdit={canEdit} />

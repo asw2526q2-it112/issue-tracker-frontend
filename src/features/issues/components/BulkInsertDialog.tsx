@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { useBulkCreateIssues } from "../queries";
 import { bulkIssueSchema, type BulkIssueFormValues } from "../schemas";
@@ -58,27 +58,27 @@ export function BulkInsertDialog({ open, onOpenChange }: Props) {
   const { data: priorities } = usePriorities();
   const { data: statuses } = useStatuses();
 
-  const typeList     = types      && "results" in types      ? types.results      : (types      ?? []);
+  const typeList = types && "results" in types ? types.results : (types ?? []);
   const severityList = severities && "results" in severities ? severities.results : (severities ?? []);
   const priorityList = priorities && "results" in priorities ? priorities.results : (priorities ?? []);
-  const statusList   = statuses   && "results" in statuses   ? statuses.results   : (statuses   ?? []);
+  const statusList = statuses && "results" in statuses ? statuses.results : (statuses ?? []);
 
   const form = useForm<BulkIssueFormValues, unknown, BulkIssueFormValues>({
     resolver: zodResolver(bulkIssueSchema),
     defaultValues: { subjects: "" },
   });
 
-  const watchedType     = form.watch("type");
-  const watchedSeverity = form.watch("severity");
-  const watchedPriority = form.watch("priority");
-const watchedStatus   = form.watch("status");
-const statusColor     = statusList.find((s) => s.id === watchedStatus)?.color;
+  const watchedType = useWatch({ control: form.control, name: "type" });
+  const watchedSeverity = useWatch({ control: form.control, name: "severity" });
+  const watchedPriority = useWatch({ control: form.control, name: "priority" });
+  const watchedStatus = useWatch({ control: form.control, name: "status" });
+  const statusColor = statusList.find((s) => s.id === watchedStatus)?.color;
 
-  const typeColor     = typeList.find((t) => t.id === watchedType)?.color;
+  const typeColor = typeList.find((t) => t.id === watchedType)?.color;
   const severityColor = severityList.find((s) => s.id === watchedSeverity)?.color;
   const priorityColor = priorityList.find((p) => p.id === watchedPriority)?.color;
 
-  const subjectsValue = form.watch("subjects");
+  const subjectsValue = useWatch({ control: form.control, name: "subjects" });
   const lineCount = subjectsValue
     ? subjectsValue.split("\n").filter((l) => l.trim().length > 0).length
     : 0;
@@ -137,38 +137,38 @@ const statusColor     = statusList.find((s) => s.id === watchedStatus)?.color;
               <div className="flex flex-col gap-3">
 
                 {/* Status — prominent, no label */}
-<FormField
-  control={form.control}
-  name="status"
-  render={({ field }) => (
-    <FormItem>
-        <FormLabel className="text-xs uppercase tracking-wide text-muted-foreground">
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs uppercase tracking-wide text-muted-foreground">
                         Status
                       </FormLabel>
-      <div className="flex items-center gap-2">
-        <Select
-          value={field.value != null ? String(field.value) : ""}
-          onValueChange={(v) => field.onChange(Number(v))}
-        >
-          <FormControl>
-            <SelectTrigger className="flex-1 font-medium">
-              <SelectValue placeholder="Select status…" />
-            </SelectTrigger>
-          </FormControl>
-          <SelectContent>
-            {statusList.map((s) => (
-              <SelectItem key={s.id} value={String(s.id)}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <ColorDot color={statusColor} />
-      </div>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={field.value != null ? String(field.value) : ""}
+                          onValueChange={(v) => field.onChange(Number(v))}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="flex-1 font-medium">
+                              <SelectValue placeholder="Select status…" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {statusList.map((s) => (
+                              <SelectItem key={s.id} value={String(s.id)}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <ColorDot color={statusColor} />
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 {/* Type */}
                 <FormField
@@ -274,15 +274,15 @@ const statusColor     = statusList.find((s) => s.id === watchedStatus)?.color;
               </div>
             </div>
             {/* Submit pinned to bottom of right col */}
-                <Button
-                  type="submit"
-                  className="mt-5 w-full"
-                  disabled={isPending || lineCount === 0}
-                >
-                  {isPending
-                    ? "Creating…"
-                    : `Create issue${lineCount !== 1 ? "s" : ""}`}
-                </Button>
+            <Button
+              type="submit"
+              className="mt-5 w-full"
+              disabled={isPending || lineCount === 0}
+            >
+              {isPending
+                ? "Creating…"
+                : `Create issue${lineCount !== 1 ? "s" : ""}`}
+            </Button>
           </form>
         </Form>
       </DialogContent>

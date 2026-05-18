@@ -58,3 +58,29 @@ export function useBulkCreateIssues() {
     },
   });
 }
+
+export function useDeleteIssue() {
+  const qc = useQueryClient();
+  return useMutation({
+    // Cridem al mètode DELETE tipat passant-li l'ID per la URL
+    mutationFn: async (id: number) =>
+      unwrap(await api.DELETE("/api/issues/{id}/", { params: { path: { id } } })),
+    onSuccess: () => {
+      // Quan s'esborri correctament, invalidem la llista perquè React Query la torni a carregar automàticament
+      void qc.invalidateQueries({ queryKey: qk.issues.list({}) });
+    },
+  });
+}
+
+export function useUpdateIssue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: components["schemas"]["PatchedIssueWriteFormRequest"] }) =>
+      unwrap(await api.PATCH("/api/issues/{id}/", { params: { path: { id } }, body: data })),
+    onSuccess: (_, variables) => {
+      // Refresquem tant el detall de l'issue com la llista general un cop guardat
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+      void qc.invalidateQueries({ queryKey: qk.issues.list({}) });
+    },
+  });
+}

@@ -7,6 +7,7 @@ import {
   useSeverities,
   usePriorities,
   useStatuses,
+  useTags,
 } from "@/features/settings/queries";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -41,11 +42,13 @@ export function IssueDetailView({ issueId }: IssueDetailViewProps) {
   const { data: severities = [] } = useSeverities();
   const { data: priorities = [] } = usePriorities();
   const { data: statuses = [] } = useStatuses();
+  const { data: tags = [] } = useTags();
 
   const typeList = "results" in types ? types.results : types;
   const severityList = "results" in severities ? severities.results : severities;
   const priorityList = "results" in priorities ? priorities.results : priorities;
   const statusList = "results" in statuses ? statuses.results : statuses;
+  const allTagsList = "results" in tags ? tags.results : tags;
 
   const colorMap = useMemo(
     () => buildColorMap(typeList, severityList, priorityList, statusList),
@@ -78,7 +81,7 @@ export function IssueDetailView({ issueId }: IssueDetailViewProps) {
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Left Column - Main Content */}
         <div className="flex-1 flex flex-col gap-8 min-w-0">
-          <IssueHeader issue={issue} canEdit={canEdit} />
+          <IssueHeader issue={issue} canEdit={canEdit} allTags={allTagsList} />
 
           <div className="flex flex-col gap-6">
             <IssueDescription issue={issue} canEdit={canEdit} />

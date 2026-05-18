@@ -71,3 +71,16 @@ export function useDeleteIssue() {
     },
   });
 }
+
+export function useUpdateIssue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: components["schemas"]["PatchedIssueWriteFormRequest"] }) =>
+      unwrap(await api.PATCH("/api/issues/{id}/", { params: { path: { id } }, body: data })),
+    onSuccess: (_, variables) => {
+      // Refresquem tant el detall de l'issue com la llista general un cop guardat
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+      void qc.invalidateQueries({ queryKey: qk.issues.list({}) });
+    },
+  });
+}

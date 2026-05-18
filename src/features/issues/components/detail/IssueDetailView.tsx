@@ -9,6 +9,7 @@ import {
   useStatuses,
 } from "@/features/settings/queries";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentUser } from "@/lib/auth/current-user";
 
 import { IssueHeader } from "./IssueHeader";
 import { IssueSidebar } from "./IssueSidebar";
@@ -67,15 +68,20 @@ export function IssueDetailView({ issueId }: IssueDetailViewProps) {
     );
   }
 
+  // Comprovem si som els creadors!
+  const currentUser = getCurrentUser();
+  const creator = issue.creator as any;
+  const canEdit = Boolean(currentUser && creator && currentUser.username === creator.username);
+
   return (
     <div className="container max-w-[1200px] mx-auto p-4 md:p-8">
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Left Column - Main Content */}
         <div className="flex-1 flex flex-col gap-8 min-w-0">
-          <IssueHeader issue={issue} colorMap={colorMap} />
+          <IssueHeader issue={issue} colorMap={colorMap} canEdit={canEdit} />
 
           <div className="flex flex-col gap-6">
-            <IssueDescription issue={issue} />
+            <IssueDescription issue={issue} canEdit={canEdit} />
             <IssueAttachments issue={issue} />
             <IssueActivity issue={issue} />
           </div>
@@ -83,7 +89,17 @@ export function IssueDetailView({ issueId }: IssueDetailViewProps) {
 
         {/* Right Column - Sidebar */}
         <div className="w-full lg:w-72 shrink-0">
-          <IssueSidebar issue={issue} colorMap={colorMap} />
+          <IssueSidebar
+            issue={issue}
+            colorMap={colorMap}
+            options={{
+              status: statusList,
+              type: typeList,
+              severity: severityList,
+              priority: priorityList,
+            }}
+            canEdit={canEdit}
+          />
         </div>
       </div>
     </div>

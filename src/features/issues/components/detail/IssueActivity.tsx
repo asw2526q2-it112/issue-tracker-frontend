@@ -266,7 +266,7 @@ export function IssueActivity({ issue }: IssueActivityProps) {
             <h2 className="text-3xl font-normal mb-6 text-foreground">Delete comment</h2>
             <p className="text-lg mb-2 font-medium">Are you sure you want to delete?</p>
             <p className="text-base text-muted-foreground mb-10 italic line-clamp-2 px-4">
-              "{commentToDelete.text}"
+              &quot;{commentToDelete.text}&quot;
             </p>
 
             <div className="flex items-center gap-6">

@@ -325,7 +325,7 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
       </div>
 
       {showDeleteModal && canEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/90 backdrop-blur-sm">
           <div className="flex flex-col items-center bg-transparent p-6 max-w-md w-full text-center">
             <h2 className="text-3xl font-normal mb-6 text-foreground">Delete issue</h2>
             <p className="text-lg mb-2 font-medium">Are you sure you want to delete?</p>

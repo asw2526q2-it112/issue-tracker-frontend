@@ -109,3 +109,36 @@ export function useRemoveIssueTag() {
     },
   });
 }
+
+export function useAddComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: { text: string } }) =>
+      unwrap(await api.POST("/api/issues/{id}/comments/", { params: { path: { id } }, body: data })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+    },
+  });
+}
+
+export function useEditComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, commentId, data }: { id: number; commentId: number; data: { text: string } }) =>
+      unwrap(await api.PATCH("/api/issues/{id}/comments/{comment_id}/", { params: { path: { id, comment_id: commentId } }, body: data })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+    },
+  });
+}
+
+export function useDeleteComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, commentId }: { id: number; commentId: number }) =>
+      unwrap(await api.DELETE("/api/issues/{id}/comments/{comment_id}/", { params: { path: { id, comment_id: commentId } } })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+    },
+  });
+}

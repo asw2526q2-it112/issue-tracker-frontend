@@ -40,6 +40,28 @@ function getFieldName(field: unknown): string {
     return String(field ?? "");
 }
 
+function getTags(tags: unknown): string[] {
+    if (!tags) return [];
+    
+    if (Array.isArray(tags)) {
+        return tags.map(tag => {
+            if (typeof tag === "string") return tag;
+            if (typeof tag === "object" && tag !== null) {
+                if ("name" in tag && typeof tag.name === "string") return tag.name;
+                if ("slug" in tag && typeof tag.slug === "string") return tag.slug;
+                return String(tag);
+            }
+            return String(tag);
+        }).filter(Boolean);
+    }
+    
+    if (typeof tags === "string") {
+        return tags.split(",").map(t => t.trim()).filter(Boolean);
+    }
+    
+    return [];
+}
+
 export function IssueRow({ issue, colorMap }: IssueRowProps) {
     const assignee = issue.assigned_to as
         | components["schemas"]["UserMini"]

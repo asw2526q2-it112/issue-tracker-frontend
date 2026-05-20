@@ -1,0 +1,242 @@
+"use client";
+
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus, Pencil, Trash2 } from "lucide-react";
+import { z } from "zod";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { SettingForm } from "./setting-form";
+import { ApiError } from "@/lib/api/client";
+
+interface BaseItem {
+  id: number;
+  name: string;
+  color: string;
+  [key: string]: any;
+}
+
+interface SettingTableProps {
+  title: string;
+  data: BaseItem[] | undefined;
+  isLoading: boolean;
+  queryKey: readonly unknown[];
+  schema: z.ZodType<any, any>;
+  onCreate: (data: any) => Promise<any>;
+  onUpdate: (id: number, data: any) => Promise<any>;
+  onDelete: (id: number) => Promise<any>;
+  renderExtraColumns?: (item: BaseItem) => React.ReactNode;
+  renderExtraHeader?: () => React.ReactNode;
+  renderExtraFormFields?: (form: any) => React.ReactNode;
+  getDefaultValues?: (item?: BaseItem) => any;
+  transformSubmitData?: (data: any) => any;
+}
+
+export function SettingTable({
+  title,
+  data,
+  isLoading,
+  queryKey,
+  schema,
+  onCreate,
+  onUpdate,
+  onDelete,
+  renderExtraColumns,
+  renderExtraHeader,
+  renderExtraFormFields,
+  getDefaultValues,
+  transformSubmitData,
+}: SettingTableProps) {
+  const queryClient = useQueryClient();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<BaseItem | null>(null);
+  const [serverErrors, setServerErrors] = useState<Record<string, any> | null>(null);
+
+  const createMutation = useMutation({
+    mutationFn: onCreate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      setIsDialogOpen(false);
+    },
+    onError: (err) => {
+      if (err instanceof ApiError) {
+        setServerErrors(err.data as Record<string, any>);
+      } else {
+        setServerErrors({ _error: String((err as Error)?.message || "An error occurred") });
+      }
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => onUpdate(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+      setIsDialogOpen(false);
+    },
+    onError: (err) => {
+      if (err instanceof ApiError) {
+        setServerErrors(err.data as Record<string, any>);
+      } else {
+        setServerErrors({ _error: String((err as Error)?.message || "An error occurred") });
+      }
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: onDelete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  const handleSubmit = (formData: any) => {
+    const payload = transformSubmitData ? transformSubmitData(formData) : formData;
+    if (editingItem) {
+      updateMutation.mutate({ id: editingItem.id, data: payload });
+    } else {
+      createMutation.mutate(payload);
+    }
+  };
+
+  const handleOpenCreate = () => {
+    setEditingItem(null);
+    setServerErrors(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleOpenEdit = (item: BaseItem) => {
+    setEditingItem(item);
+    setServerErrors(null);
+    setIsDialogOpen(true);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-row items-center justify-between px-6 py-4 bg-sidebar-secondary/40 text-foreground rounded-lg shadow-sm">
+        <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={handleOpenCreate} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Plus className="mr-2 h-4 w-4" /> Add New
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingItem ? "Edit" : "Create"} {title.slice(0, -1)}
+              </DialogTitle>
+              <DialogDescription>
+                Fill in the details below.
+              </DialogDescription>
+            </DialogHeader>
+            <SettingForm
+              schema={schema}
+              defaultValues={getDefaultValues ? getDefaultValues(editingItem || undefined) : (editingItem || { name: "", color: "#25c2a0" })}
+              onSubmit={handleSubmit}
+              onCancel={() => setIsDialogOpen(false)}
+              serverErrors={serverErrors}
+            >
+              {renderExtraFormFields?.(null)}
+            </SettingForm>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="px-0">
+        {isLoading ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">
+            Loading...
+          </div>
+        ) : (
+          <div className="bg-transparent overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent bg-muted/50">
+                  <TableHead className="w-[80px] pl-6">Color</TableHead>
+                  <TableHead>Name</TableHead>
+                  {renderExtraHeader?.()}
+                  <TableHead className="w-[120px] text-right pr-6"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data?.map((item) => (
+                  <TableRow key={item.id} className="group transition-colors hover:bg-muted/30">
+                    <TableCell className="pl-6">
+                      <div
+                        className="h-5 w-5 rounded-md shadow-sm border border-black/10"
+                        style={{ backgroundColor: item.color }}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {item.name}
+                    </TableCell>
+                    {renderExtraColumns?.(item)}
+                    <TableCell className="text-right pr-6">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenEdit(item)}
+                          className="h-8 w-8"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => {
+                            if (confirm("Are you sure you want to delete this?")) {
+                              deleteMutation.mutate(item.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {!data?.length && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={10}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      No items found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+    </div>
+
+  );
+}

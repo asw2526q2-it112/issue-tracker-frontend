@@ -22,6 +22,7 @@ export const qk = {
     severities: () => [...qk.settings.all, "severities"] as const,
     types: () => [...qk.settings.all, "types"] as const,
     tags: () => [...qk.settings.all, "tags"] as const,
+    dueDates: () => [...qk.settings.all, "dueDates"] as const,
   },
   users: {
     profile: (username: string) => ["users", username] as const,

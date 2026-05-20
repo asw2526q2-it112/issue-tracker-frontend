@@ -37,3 +37,10 @@ export function useTags() {
     queryFn: async () => unwrap(await api.GET("/api/settings/tags/")),
   });
 }
+
+export function useDueDates() {
+  return useQuery({
+    queryKey: qk.settings.dueDates(),
+    queryFn: async () => unwrap(await api.GET("/api/settings/due-dates/")),
+  });
+}

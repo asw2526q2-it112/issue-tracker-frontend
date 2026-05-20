@@ -1,11 +1,12 @@
 // src/features/issues/components/IssueListView.tsx
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 import { useIssues } from "../queries";
 import { toOrdering, type SortField, type SortDir } from "../types";
+import { useIssueColorMap } from "../useColorMap";
 import {
   useTypes,
   useSeverities,
@@ -13,25 +14,11 @@ import {
   useStatuses,
 } from "@/features/settings/queries";
 import { FiltersPanel } from "./FiltersPanel";
-import { IssueRow } from "./IssueRow";
-import { SortableHeader } from "./SortableHeader";
+import { IssuesTable } from "./IssuesTable";
 import { NewIssueDialog } from "./NewIssueDialog";
 import { BulkInsertDialog } from "./BulkInsertDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-
-function buildColorMap(
-  ...groups: Array<{ name: string; color: string }[] | undefined>
-): Record<string, string> {
-  const map: Record<string, string> = {};
-  for (const group of groups) {
-    for (const item of group ?? []) {
-      map[item.name] = item.color;
-    }
-  }
-  return map;
-}
 
 export function IssueListView() {
   const router = useRouter();
@@ -90,10 +77,7 @@ export function IssueListView() {
   const priorityList = "results" in priorities ? priorities.results : priorities;
   const statusList = "results" in statuses ? statuses.results : statuses;
 
-  const colorMap = useMemo(
-    () => buildColorMap(typeList, severityList, priorityList),
-    [typeList, severityList, priorityList],
-  );
+  const colorMap = useIssueColorMap();
 
   // ── handlers ─────────────────────────────────────────────────────────
   function handleFilterChange(
@@ -237,26 +221,12 @@ export function IssueListView() {
         </div>
 
         {/* Tabla */}
-        <div className="min-w-0 flex-1 rounded-lg border border-border bg-card">
-          {/* Cabeceras */}
-          <div className="grid grid-cols-[3rem_5rem_5rem_1fr_5rem_5.5rem_5.5rem] items-center justify-items-center gap-x-4 border-b border-border bg-muted/30 px-4 py-2">
-            <SortableHeader field="type" label="Type" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
-            <SortableHeader field="severity" label="Severity" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
-            <SortableHeader field="priority" label="Priority" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
-            <SortableHeader field="id" label="Issue" currentField={sortField} currentDir={sortDir} onSort={handleSort} className="justify-self-start" />
-            <SortableHeader field="status" label="Status" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
-            <SortableHeader field="created_at" label="Created" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
-            <SortableHeader field="assigned_to" label="Assignee" currentField={sortField} currentDir={sortDir} onSort={handleSort} />
-          </div>
-
-          {/* Filas */}
-          {issuesLoading ? (
-            <div className="space-y-px p-4">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-12 w-full rounded" />
-              ))}
-            </div>
-          ) : !issuesData?.results?.length ? (
+        <IssuesTable
+          issues={issuesData?.results ?? []}
+          colorMap={colorMap}
+          isLoading={issuesLoading}
+          sort={{ field: sortField, dir: sortDir, onSort: handleSort }}
+          emptyState={
             <div className="flex flex-col items-center justify-center gap-2 py-20 text-muted-foreground">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -274,42 +244,39 @@ export function IssueListView() {
               </svg>
               <p className="text-sm">No issues found.</p>
             </div>
-          ) : (
-            issuesData.results.map((issue) => (
-              <IssueRow key={issue.id} issue={issue} colorMap={colorMap} />
-            ))
-          )}
-
-          {/* Paginación */}
-          {(hasNext || hasPrev) && (
-            <div className="flex items-center justify-between border-t border-border px-4 py-3">
-              <span className="text-xs text-muted-foreground">
-                {issuesData?.count ?? 0} issue{issuesData?.count !== 1 ? "s" : ""}
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!hasPrev}
-                  onClick={() => push({ page: String(currentPage - 1) })}
-                >
-                  ← Prev
-                </Button>
+          }
+          footer={
+            (hasNext || hasPrev) && (
+              <div className="flex items-center justify-between border-t border-border px-4 py-3">
                 <span className="text-xs text-muted-foreground">
-                  Page {currentPage}
+                  {issuesData?.count ?? 0} issue
+                  {issuesData?.count !== 1 ? "s" : ""}
                 </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={!hasNext}
-                  onClick={() => push({ page: String(currentPage + 1) })}
-                >
-                  Next →
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!hasPrev}
+                    onClick={() => push({ page: String(currentPage - 1) })}
+                  >
+                    ← Prev
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Page {currentPage}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!hasNext}
+                    onClick={() => push({ page: String(currentPage + 1) })}
+                  >
+                    Next →
+                  </Button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )
+          }
+        />
       </div>
     </div>
   );

@@ -3,19 +3,13 @@
 import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { IssuesTable } from "@/features/issues/components/IssuesTable";
+import { useIssueColorMap } from "@/features/issues/useColorMap";
 
 import type { components } from "@/lib/api/schema";
 
 type IssueRead = components["schemas"]["IssueRead"];
 type CommentRead = components["schemas"]["CommentRead"];
-
-export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 export function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString(undefined, {
@@ -74,61 +68,17 @@ export function IssueTable({
   issues: IssueRead[];
   empty: string;
 }) {
-  if (issues.length === 0) {
-    return (
-      <Card>
-        <CardContent className="text-muted-foreground py-8 text-center text-sm italic">
-          {empty}
-        </CardContent>
-      </Card>
-    );
-  }
-
+  const colorMap = useIssueColorMap();
   return (
-    <div className="bg-card overflow-hidden rounded-md border">
-      <div className="text-muted-foreground bg-muted/40 grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 border-b px-4 py-2 text-xs font-medium uppercase">
-        <div>Issue</div>
-        <div className="hidden sm:block">Type</div>
-        <div className="hidden sm:block">Severity</div>
-        <div className="hidden sm:block">Priority</div>
-        <div>Status</div>
-      </div>
-      <ul className="divide-y">
-        {issues.map((issue) => (
-          <li
-            key={issue.id}
-            className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 px-4 py-3"
-          >
-            <div className="min-w-0">
-              <Link
-                href={`/issues/${issue.id}`}
-                className="hover:text-primary text-sm font-medium"
-              >
-                <span className="text-muted-foreground mr-1.5 text-xs">
-                  #{issue.id}
-                </span>
-                {issue.subject}
-              </Link>
-              <div className="text-muted-foreground mt-0.5 text-xs">
-                {formatDate(issue.modified_at)}
-              </div>
-            </div>
-            <span className="text-muted-foreground hidden text-xs sm:block">
-              {issue.type || "—"}
-            </span>
-            <span className="text-muted-foreground hidden text-xs sm:block">
-              {issue.severity || "—"}
-            </span>
-            <span className="text-muted-foreground hidden text-xs sm:block">
-              {issue.priority || "—"}
-            </span>
-            <span className="text-foreground text-xs font-medium">
-              {issue.status || "—"}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <IssuesTable
+      issues={issues}
+      colorMap={colorMap}
+      emptyState={
+        <div className="text-muted-foreground py-8 text-center text-sm italic">
+          {empty}
+        </div>
+      }
+    />
   );
 }
 
@@ -146,20 +96,23 @@ export function CommentList({ comments }: { comments: CommentRead[] }) {
   return (
     <div className="flex flex-col gap-3">
       {comments.map((comment) => (
-        <Card key={comment.id}>
-          <CardContent className="space-y-2 pt-5">
-            <Link
-              href={`/issues/${comment.issue}#comment-${comment.id}`}
-              className="text-primary text-sm font-medium hover:underline"
-            >
-              #{comment.issue}
-            </Link>
-            <p className="text-sm whitespace-pre-wrap">{comment.text}</p>
-            <div className="text-muted-foreground text-xs">
-              {formatDateTime(comment.created_at)}
-            </div>
-          </CardContent>
-        </Card>
+        <Link
+          key={comment.id}
+          href={`/${comment.issue}#comment-${comment.id}`}
+          className="block"
+        >
+          <Card className="hover:border-primary/50 transition-colors">
+            <CardContent className="space-y-2">
+              <span className="text-primary text-sm font-medium">
+                Issue #{comment.issue}
+              </span>
+              <p className="text-sm whitespace-pre-wrap">{comment.text}</p>
+              <div className="text-muted-foreground text-xs">
+                {formatDateTime(comment.created_at)}
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       ))}
     </div>
   );

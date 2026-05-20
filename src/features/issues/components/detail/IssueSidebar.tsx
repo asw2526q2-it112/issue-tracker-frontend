@@ -85,7 +85,7 @@ function StatusDropdown({
         </button>
       </div>
       {isOpen && canEdit && (
-        <div className="absolute top-full left-0 mt-2 w-56 bg-card border border-border shadow-lg rounded-sm flex flex-col py-1 overflow-hidden">
+        <div className="absolute top-full left-0 mt-2 w-56 bg-card border border-border shadow-lg rounded-sm flex flex-col py-1 overflow-hidden z-50">
           {options.map((opt) => (
             <button
               key={opt.id}

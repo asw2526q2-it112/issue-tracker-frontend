@@ -217,3 +217,36 @@ export function useRemoveIssueWatcher() {
     },
   });
 }
+
+export function useAssignIssue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, userId }: { id: number; userId: number }) =>
+      unwrap(
+        await api.PUT("/api/issues/{id}/assignee/", {
+          params: { path: { id } },
+          body: { user_id: userId },
+        }),
+      ),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+      void qc.invalidateQueries({ queryKey: qk.issues.list({}) });
+    },
+  });
+}
+
+export function useUnassignIssue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) =>
+      unwrap(
+        await api.DELETE("/api/issues/{id}/assignee/", {
+          params: { path: { id } },
+        }),
+      ),
+    onSuccess: (_, id) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(id) });
+      void qc.invalidateQueries({ queryKey: qk.issues.list({}) });
+    },
+  });
+}

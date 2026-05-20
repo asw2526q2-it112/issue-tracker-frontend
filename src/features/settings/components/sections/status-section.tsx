@@ -12,6 +12,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFormContext } from "react-hook-form";
+import type { components } from "@/lib/api/schema";
 
 function StatusExtraFields() {
   const { control } = useFormContext();
@@ -58,7 +59,10 @@ export function StatusSection() {
   const { data, isLoading } = useStatuses();
 
   return (
-    <SettingTable
+    <SettingTable<
+      components["schemas"]["StatusSettingWriteRequest"],
+      components["schemas"]["Status"]
+    >
       title="Statuses"
       data={data?.results}
       isLoading={isLoading}
@@ -93,7 +97,9 @@ export function StatusSection() {
         isclosed: item?.is_closed || false,
       })}
       transformSubmitData={(data) => ({
-        ...data,
+        name: data.name,
+        color: data.color,
+        slug: data.slug || "",
         isclosed: data.isclosed ? "true" : "false",
       })}
     />

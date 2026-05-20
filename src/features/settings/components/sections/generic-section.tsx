@@ -7,10 +7,27 @@ import { SettingTable } from "../setting-table";
 
 type GenericEntityType = "types" | "priorities" | "severities" | "tags";
 
+type GetPathType =
+  | "/api/settings/types/"
+  | "/api/settings/priorities/"
+  | "/api/settings/severities/"
+  | "/api/settings/tags/";
+
+type GetDetailPathType =
+  | "/api/settings/types/{id}/"
+  | "/api/settings/priorities/{id}/"
+  | "/api/settings/severities/{id}/"
+  | "/api/settings/tags/{id}/";
+
 interface GenericSectionProps {
   title: string;
   entity: GenericEntityType;
-  useDataHook: () => any;
+  useDataHook: () => {
+    data?: {
+      results?: { id: number; name: string; color: string }[];
+    };
+    isLoading: boolean;
+  };
 }
 
 export function GenericSection({ title, entity, useDataHook }: GenericSectionProps) {
@@ -25,8 +42,8 @@ export function GenericSection({ title, entity, useDataHook }: GenericSectionPro
     }
   };
 
-  const getPath = () => `/api/settings/${entity}/` as any;
-  const getDetailPath = () => `/api/settings/${entity}/{id}/` as any;
+  const getPath = () => `/api/settings/${entity}/` as GetPathType;
+  const getDetailPath = () => `/api/settings/${entity}/{id}/` as GetDetailPathType;
 
   return (
     <SettingTable

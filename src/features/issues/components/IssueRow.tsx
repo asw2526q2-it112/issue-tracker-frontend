@@ -40,6 +40,28 @@ function getFieldName(field: unknown): string {
     return String(field ?? "");
 }
 
+function getTags(tags: unknown): string[] {
+    if (!tags) return [];
+    
+    if (Array.isArray(tags)) {
+        return tags.map(tag => {
+            if (typeof tag === "string") return tag;
+            if (typeof tag === "object" && tag !== null) {
+                if ("name" in tag && typeof tag.name === "string") return tag.name;
+                if ("slug" in tag && typeof tag.slug === "string") return tag.slug;
+                return String(tag);
+            }
+            return String(tag);
+        }).filter(Boolean);
+    }
+    
+    if (typeof tags === "string") {
+        return tags.split(",").map(t => t.trim()).filter(Boolean);
+    }
+    
+    return [];
+}
+
 export function IssueRow({ issue, colorMap }: IssueRowProps) {
     const assignee = issue.assigned_to as
         | components["schemas"]["UserMini"]
@@ -51,6 +73,8 @@ export function IssueRow({ issue, colorMap }: IssueRowProps) {
     const severityName = getFieldName(issue.severity);
     const priorityName = getFieldName(issue.priority);
     const statusName = getFieldName(issue.status);
+
+    const tagsList = getTags(issue.tags);
 
     return (
         <div className="grid grid-cols-[3rem_5rem_5rem_1fr_5rem_5.5rem_5.5rem] items-center justify-items-center gap-x-4 gap-y-0 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-muted/40">
@@ -83,19 +107,16 @@ export function IssueRow({ issue, colorMap }: IssueRowProps) {
                     </Link>
                 </div>
                 {/* Tags */}
-                {issue.tags && (
+                {tagsList.length > 0 && (
                     <div className="mt-0.5 flex flex-wrap gap-1">
-                        {String(issue.tags)
-                            .split(",")
-                            .filter(Boolean)
-                            .map((tag) => (
-                                <span
-                                    key={tag}
-                                    className="rounded-full bg-muted px-2 py-px text-[10px] font-medium text-muted-foreground"
-                                >
-                                    {tag.trim()}
-                                </span>
-                            ))}
+                        {tagsList.map((tag, idx) => (
+                            <span
+                                key={`${tag}-${idx}`}
+                                className="rounded-full bg-muted px-2 py-px text-[10px] font-medium text-muted-foreground"
+                            >
+                                {tag}
+                            </span>
+                        ))}
                     </div>
                 )}
             </div>

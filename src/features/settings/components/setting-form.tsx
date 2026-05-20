@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, Path, Resolver } from "react-hook-form";
 import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,13 +16,23 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
+export interface SettingFormValues {
+  name: string;
+  color: string;
+  slug?: string;
+  isclosed?: boolean;
+  days?: number;
+  isBefore?: boolean;
+  [key: string]: unknown;
+}
+
 interface SettingFormProps {
-  schema: z.ZodType<any, any>;
-  defaultValues: any;
-  onSubmit: (data: any) => void;
+  schema: z.ZodTypeAny;
+  defaultValues: SettingFormValues;
+  onSubmit: (data: SettingFormValues) => void;
   onCancel: () => void;
   children?: React.ReactNode;
-  serverErrors?: Record<string, any> | null;
+  serverErrors?: Record<string, unknown> | null;
 }
 
 export function SettingForm({
@@ -33,8 +43,8 @@ export function SettingForm({
   children,
   serverErrors,
 }: SettingFormProps) {
-  const form = useForm({
-    resolver: zodResolver(schema),
+  const form = useForm<SettingFormValues>({
+    resolver: zodResolver(schema as unknown as Parameters<typeof zodResolver>[0]) as unknown as Resolver<SettingFormValues>,
     defaultValues: defaultValues,
   });
 
@@ -52,23 +62,25 @@ export function SettingForm({
       if (key === "non_field_errors" || key === "detail" || key === "_error") return;
       const message = Array.isArray(val) ? val.join(" ") : String(val);
       try {
-        form.setError(key as any, { type: "server", message });
-      } catch (e) {
+        form.setError(key as Path<SettingFormValues>, { type: "server", message });
+      } catch {
         // ignore invalid field names
       }
     });
 
     if (general) {
-      form.setError("_server", { type: "server", message: Array.isArray(general) ? general.join(" ") : String(general) });
+      form.setError("_server" as Path<SettingFormValues>, { type: "server", message: Array.isArray(general) ? general.join(" ") : String(general) });
     }
-  }, [serverErrors]);
+  }, [serverErrors, form]);
+
+  const serverError = (form.formState.errors as Record<string, { message?: string } | undefined>)._server;
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 w-full max-w-md mx-auto">
-        {form.formState.errors._server && (
+        {serverError && (
           <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-            {String(form.formState.errors._server.message)}
+            {String(serverError.message || "")}
           </div>
         )}
         <FormField

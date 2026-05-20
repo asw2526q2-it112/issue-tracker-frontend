@@ -10,6 +10,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useFormContext } from "react-hook-form";
+import type { components } from "@/lib/api/schema";
 
 function DueDateExtraFields() {
   const { control } = useFormContext();
@@ -20,9 +21,14 @@ function DueDateExtraFields() {
         name="days"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Days Offset</FormLabel>
+            <FormLabel>Days</FormLabel>
             <FormControl>
-              <Input type="number" {...field} />
+              <Input
+                type="number"
+                placeholder="0"
+                {...field}
+                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -56,7 +62,10 @@ export function DueDateSection() {
   const { data, isLoading } = useDueDates();
 
   return (
-    <SettingTable
+    <SettingTable<
+      components["schemas"]["DueDateSettingWriteRequest"],
+      components["schemas"]["DueDate"]
+    >
       title="Due Dates"
       data={data?.results}
       isLoading={isLoading}
@@ -87,7 +96,9 @@ export function DueDateSection() {
         isBefore: item?.isBefore || false,
       })}
       transformSubmitData={(data) => ({
-        ...data,
+        name: data.name,
+        color: data.color,
+        days: data.days || 0,
         isBefore: data.isBefore ? "true" : "false",
       })}
     />

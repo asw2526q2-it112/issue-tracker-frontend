@@ -7,13 +7,6 @@ import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Table,
   TableBody,
   TableCell,
@@ -29,33 +22,38 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { SettingForm } from "./setting-form";
+import { SettingForm, SettingFormValues } from "./setting-form";
 import { ApiError } from "@/lib/api/client";
 
 interface BaseItem {
   id: number;
   name: string;
   color: string;
-  [key: string]: any;
 }
 
-interface SettingTableProps {
+interface SettingTableProps<
+  TSubmit = SettingFormValues,
+  TItem extends BaseItem = BaseItem,
+> {
   title: string;
-  data: BaseItem[] | undefined;
+  data: TItem[] | undefined;
   isLoading: boolean;
   queryKey: readonly unknown[];
-  schema: z.ZodType<any, any>;
-  onCreate: (data: any) => Promise<any>;
-  onUpdate: (id: number, data: any) => Promise<any>;
-  onDelete: (id: number) => Promise<any>;
-  renderExtraColumns?: (item: BaseItem) => React.ReactNode;
+  schema: z.ZodTypeAny;
+  onCreate: (data: TSubmit) => Promise<unknown>;
+  onUpdate: (id: number, data: TSubmit) => Promise<unknown>;
+  onDelete: (id: number) => Promise<unknown>;
+  renderExtraColumns?: (item: TItem) => React.ReactNode;
   renderExtraHeader?: () => React.ReactNode;
-  renderExtraFormFields?: (form: any) => React.ReactNode;
-  getDefaultValues?: (item?: BaseItem) => any;
-  transformSubmitData?: (data: any) => any;
+  renderExtraFormFields?: () => React.ReactNode;
+  getDefaultValues?: (item?: TItem) => SettingFormValues;
+  transformSubmitData?: (data: SettingFormValues) => TSubmit;
 }
 
-export function SettingTable({
+export function SettingTable<
+  TSubmit = SettingFormValues,
+  TItem extends BaseItem = BaseItem,
+>({
   title,
   data,
   isLoading,
@@ -69,11 +67,11 @@ export function SettingTable({
   renderExtraFormFields,
   getDefaultValues,
   transformSubmitData,
-}: SettingTableProps) {
+}: SettingTableProps<TSubmit, TItem>) {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<BaseItem | null>(null);
-  const [serverErrors, setServerErrors] = useState<Record<string, any> | null>(null);
+  const [editingItem, setEditingItem] = useState<TItem | null>(null);
+  const [serverErrors, setServerErrors] = useState<Record<string, unknown> | null>(null);
 
   const createMutation = useMutation({
     mutationFn: onCreate,
@@ -83,7 +81,7 @@ export function SettingTable({
     },
     onError: (err) => {
       if (err instanceof ApiError) {
-        setServerErrors(err.data as Record<string, any>);
+        setServerErrors(err.data as Record<string, unknown>);
       } else {
         setServerErrors({ _error: String((err as Error)?.message || "An error occurred") });
       }
@@ -91,14 +89,14 @@ export function SettingTable({
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: any }) => onUpdate(id, data),
+    mutationFn: ({ id, data }: { id: number; data: TSubmit }) => onUpdate(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
       setIsDialogOpen(false);
     },
     onError: (err) => {
       if (err instanceof ApiError) {
-        setServerErrors(err.data as Record<string, any>);
+        setServerErrors(err.data as Record<string, unknown>);
       } else {
         setServerErrors({ _error: String((err as Error)?.message || "An error occurred") });
       }
@@ -112,8 +110,8 @@ export function SettingTable({
     },
   });
 
-  const handleSubmit = (formData: any) => {
-    const payload = transformSubmitData ? transformSubmitData(formData) : formData;
+  const handleSubmit = (formData: SettingFormValues) => {
+    const payload = transformSubmitData ? transformSubmitData(formData) : (formData as unknown as TSubmit);
     if (editingItem) {
       updateMutation.mutate({ id: editingItem.id, data: payload });
     } else {
@@ -127,7 +125,7 @@ export function SettingTable({
     setIsDialogOpen(true);
   };
 
-  const handleOpenEdit = (item: BaseItem) => {
+  const handleOpenEdit = (item: TItem) => {
     setEditingItem(item);
     setServerErrors(null);
     setIsDialogOpen(true);
@@ -155,12 +153,12 @@ export function SettingTable({
             </DialogHeader>
             <SettingForm
               schema={schema}
-              defaultValues={getDefaultValues ? getDefaultValues(editingItem || undefined) : (editingItem || { name: "", color: "#25c2a0" })}
+              defaultValues={getDefaultValues ? getDefaultValues(editingItem || undefined) : ((editingItem || { name: "", color: "#25c2a0" }) as unknown as SettingFormValues)}
               onSubmit={handleSubmit}
               onCancel={() => setIsDialogOpen(false)}
               serverErrors={serverErrors}
             >
-              {renderExtraFormFields?.(null)}
+              {renderExtraFormFields?.()}
             </SettingForm>
           </DialogContent>
         </Dialog>

@@ -12,7 +12,9 @@ import {
   useUpdateIssue,
   useToggleIssueWatch,
   useAddIssueWatcher,
-  useRemoveIssueWatcher
+  useRemoveIssueWatcher,
+  useSetIssueDueDate,
+  useRemoveIssueDueDate
 } from "@/features/issues/queries";
 import { getCurrentUser } from "@/lib/auth/current-user";
 
@@ -173,7 +175,7 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
   const router = useRouter();
   const currentUser = getCurrentUser();
 
-  // Estats de modals
+  // Estats de modals base
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [watcherToDelete, setWatcherToDelete] = useState<UserMini | null>(null);
@@ -181,9 +183,18 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
   // Estats per al Modal Completa de Watchers
   const [isWatcherModalOpen, setIsWatcherModalOpen] = useState(false);
   const [watcherSearch, setWatcherSearch] = useState("");
-  // CORRECCIÓ: Guardem els IDs temporals com a strings
   const [tempSelectedWatcherIds, setTempSelectedWatcherIds] = useState<string[]>([]);
   const [isSavingWatchers, setIsSavingWatchers] = useState(false);
+
+  // Estats per al Due Date
+  const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false);
+  const [showDeleteDueDateModal, setShowDeleteDueDateModal] = useState(false);
+  const [dueDateInput, setDueDateInput] = useState("");
+  const [dueDateReasonInput, setDueDateReasonInput] = useState("");
+  const [isSavingDueDate, setIsSavingDueDate] = useState(false);
+  const [isDeletingDueDate, setIsDeletingDueDate] = useState(false);
+
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   // Queries i Mutations
   const { mutateAsync: deleteIssueMutation } = useDeleteIssue();
@@ -191,6 +202,8 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
   const { mutateAsync: toggleWatch, isPending: isToggling } = useToggleIssueWatch();
   const { mutateAsync: addWatcher } = useAddIssueWatcher();
   const { mutateAsync: removeWatcher } = useRemoveIssueWatcher();
+  const { mutateAsync: setDueDate } = useSetIssueDueDate();
+  const { mutateAsync: removeDueDate } = useRemoveIssueDueDate();
 
   const typeName = getFieldName(issue.type);
   const severityName = getFieldName(issue.severity);
@@ -199,13 +212,38 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
   const assignee = issue.assigned_to as UserMini | null | undefined;
   const watchers = (issue.watchers as UserMini[] | undefined) || [];
 
-  // Carreguem els usuaris del fitxer local (amb doble cast pel readonly)
+  const currentDueDate = (issue as Record<string, unknown>).deadline || (issue as Record<string, unknown>).due_date;
+  const currentDueDateReason = (issue as Record<string, unknown>).due_date_reason || (issue as Record<string, unknown>).reason;
+
   const allUsers = (USERS as unknown as UserMini[]) || [];
-
   const isWatching = watchers.some(w => w.username === currentUser?.username);
-
-  // CORRECCIÓ: Convertim els IDs actuals a string per a una comparació segura
   const currentWatcherIds = watchers.map(w => String(w.id));
+
+  // Lògica de colors per a la Due Date
+  let clockBg = "#f1f3f5";
+  let clockText = "#008484";
+
+  if (currentDueDate) {
+    const [year, month, day] = String(currentDueDate).substring(0, 10).split('-');
+    const dueDateObj = new Date(Number(year), Number(month) - 1, Number(day));
+    dueDateObj.setHours(0, 0, 0, 0);
+
+    const todayObj = new Date();
+    todayObj.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.round((dueDateObj.getTime() - todayObj.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 0) {
+      clockBg = "#e03a3e"; // Vermell (avui o passat)
+      clockText = "#ffffff";
+    } else if (diffDays <= 14) {
+      clockBg = "#f39c12"; // Taronja (fins a 2 setmanes)
+      clockText = "#ffffff";
+    } else {
+      clockBg = "#2ecc71"; // Verd (més de 2 setmanes)
+      clockText = "#ffffff";
+    }
+  }
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -236,18 +274,13 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
     }
   };
 
-  // Funció per guardar la selecció múltiple del modal
   const handleSaveWatchers = async () => {
     setIsSavingWatchers(true);
     try {
-      // Calculem diferències comparant strings
       const idsToAddStr = tempSelectedWatcherIds.filter(id => !currentWatcherIds.includes(id));
       const idsToRemoveStr = currentWatcherIds.filter(id => !tempSelectedWatcherIds.includes(id));
 
-      // Executem mutacions convertint els strings a números (el que espera l'API)
       const addPromises = idsToAddStr.map(userIdStr => addWatcher({ id: issue.id as number, userId: Number(userIdStr) }));
-      // Nota: removeWatcher necessita el ID del pivot si fem servir la de Taiga, però basat en
-      // handleRemoveSpecificWatcher, la teva API accepta el User ID directament.
       const removePromises = idsToRemoveStr.map(userIdStr => removeWatcher({ id: issue.id as number, userId: Number(userIdStr) }));
 
       await Promise.all([...addPromises, ...removePromises]);
@@ -262,11 +295,9 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
   };
 
   const handleOpenWatcherModal = () => {
-
     setTempSelectedWatcherIds(currentWatcherIds);
     setIsWatcherModalOpen(true);
   };
-
 
   const handleToggleUserSelection = (userId: unknown) => {
     const userIdStr = String(userId);
@@ -287,10 +318,52 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
     }
   };
 
-  // Filtrem els usuaris del cercador dins del modal
   const filteredUsers = allUsers.filter(u =>
     u.username.toLowerCase().includes(watcherSearch.toLowerCase())
   );
+
+  // Funcions de Due Date
+  const handleOpenDueDateModal = () => {
+    setDueDateInput(currentDueDate ? String(currentDueDate).substring(0, 10) : "");
+    setDueDateReasonInput(currentDueDateReason ? String(currentDueDateReason) : "");
+    setIsDueDateModalOpen(true);
+  };
+
+  const setDateOffset = (days: number, months: number = 0) => {
+    const d = new Date();
+    if (days) d.setDate(d.getDate() + days);
+    if (months) d.setMonth(d.getMonth() + months);
+    setDueDateInput(d.toISOString().split('T')[0]);
+  };
+
+  const handleSaveDueDate = async () => {
+    if (!dueDateInput) return;
+    setIsSavingDueDate(true);
+    try {
+      await setDueDate({
+        id: issue.id as number,
+        data: { deadline: dueDateInput, due_date_reason: dueDateReasonInput }
+      });
+      setIsDueDateModalOpen(false);
+    } catch (error) {
+      console.error("Error saving due date:", error);
+    } finally {
+      setIsSavingDueDate(false);
+    }
+  };
+
+  const handleDeleteDueDate = async () => {
+    setIsDeletingDueDate(true);
+    try {
+      await removeDueDate(issue.id as number);
+      setShowDeleteDueDateModal(false);
+      setIsDueDateModalOpen(false);
+    } catch (error) {
+      console.error("Error deleting due date:", error);
+    } finally {
+      setIsDeletingDueDate(false);
+    }
+  };
 
   return (
     <>
@@ -359,9 +432,8 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
                         {initials(watcher.username)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm text-[#008484] hover:underline cursor-pointer truncate">{watcher.username}</span>
+                    <span className="text-sm text-[#008484] hover:cursor-pointer truncate">{watcher.username}</span>
                   </div>
-                  {/* Creueta per eliminar */}
                   <button
                     onClick={() => setWatcherToDelete(watcher)}
                     className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 transition-opacity shrink-0"
@@ -374,7 +446,6 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
             </div>
           )}
 
-          {/* Botons a sota del tot */}
           <div className="flex items-center justify-between gap-2">
             <button
               onClick={handleOpenWatcherModal}
@@ -383,7 +454,6 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
               + Add watchers
             </button>
 
-            {/* Toggle Watch/Unwatch Button */}
             <button
               onClick={handleToggleWatch}
               disabled={isToggling}
@@ -403,11 +473,19 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
 
         <hr className="border-border" />
 
+        {/* BOTONS INFERIORS (Due Date i Delete) */}
         <div className="flex items-center gap-2 mt-4 relative z-0">
-          <Button variant="secondary" size="icon" className="h-8 w-8 rounded shrink-0 bg-[#f1f3f5] hover:bg-[#e2e6ea]">
+
+          <button
+            className="flex items-center justify-center h-8 w-8 rounded shrink-0 transition-colors shadow-sm hover:opacity-80"
+            style={{ backgroundColor: clockBg, color: clockText }}
+            onClick={handleOpenDueDateModal}
+            title={currentDueDate ? `Due date: ${String(currentDueDate).substring(0, 10)}` : "Set due date"}
+            type="button"
+          >
             <span className="sr-only">Due Date</span>
-            <Clock className="w-4 h-4 text-[#008484]" strokeWidth={2.5} />
-          </Button>
+            <Clock className="w-4 h-4" strokeWidth={2.5} />
+          </button>
 
           {canEdit && (
             <Button
@@ -483,13 +561,11 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
         </div>
       )}
 
-      {/* OVERLAY DEL MODAL COMPLETA DE WATCHERS (Selecció Múltiple) */}
+      {/* OVERLAY DEL MODAL COMPLETA DE WATCHERS */}
       {isWatcherModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/90 backdrop-blur-sm">
           <div className="flex flex-col items-center bg-transparent p-6 max-w-xl w-full text-center">
             <h2 className="text-3xl font-normal mb-8 text-foreground">Add/Remove watchers</h2>
-
-            {/* Cercador */}
             <input
               type="text"
               placeholder="Search for users"
@@ -498,8 +574,6 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
               className="w-full border-2 border-[#7de8d4] p-2 focus:outline-none text-base text-foreground bg-transparent mb-6 shadow-inner rounded-sm"
               autoFocus
             />
-
-            {/* Llista d'usuaris amb Checkbox */}
             <div className="w-full flex flex-col max-h-[50vh] overflow-y-auto pr-2 gap-1 mb-10 text-left border border-border/50 rounded-sm bg-card/50 p-2 shadow-inner">
               {filteredUsers.length > 0 ? filteredUsers.map(user => {
                 const isSelected = tempSelectedWatcherIds.includes(String(user.id));
@@ -515,7 +589,6 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
                       </Avatar>
                       <span className="text-base text-foreground font-medium">{user.username}</span>
                     </div>
-                    {/* Custom Checkbox */}
                     <button
                       onClick={() => handleToggleUserSelection(user.id)}
                       className={`size-6 rounded border-2 flex items-center justify-center transition-colors shadow-md ${isSelected ? 'border-primary bg-primary text-white' : 'border-border bg-card'}`}
@@ -529,8 +602,6 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
                 <div className="text-center text-muted-foreground p-8 text-lg">No users found</div>
               )}
             </div>
-
-            {/* Accions (SAVE / Cancel) */}
             <div className="flex items-center gap-8">
               <button
                 className="text-[#008484] hover:underline text-lg font-medium px-4"
@@ -546,6 +617,104 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
               >
                 <Check className="w-5 h-5 mr-2" />
                 {isSavingWatchers ? "SAVING..." : "SAVE"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* OVERLAY DEL MODAL DUE DATE */}
+      {isDueDateModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/90 backdrop-blur-sm">
+          <div className="flex flex-col items-center bg-transparent p-8 max-w-3xl w-full text-center relative">
+
+            <button
+              onClick={() => setIsDueDateModalOpen(false)}
+              className="absolute -top-10 right-0 p-2 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <h2 className="text-4xl font-normal mb-8 text-foreground">Set due date</h2>
+
+
+            <input
+              type="date"
+              ref={dateInputRef}
+              value={dueDateInput}
+              onChange={(e) => setDueDateInput(e.target.value)}
+              onClick={() => {
+                // Força l'obertura del calendari natiu en clicar qualsevol part del requadre
+                dateInputRef.current?.showPicker();
+              }}
+              className="w-full border-2 border-[#7de8d4] p-3 focus:outline-none text-base text-foreground bg-transparent mb-4 shadow-inner rounded-sm cursor-pointer"
+            />
+
+            <div className="flex flex-wrap items-center justify-center gap-2 mb-6 w-full">
+              <button onClick={() => setDateOffset(7)} className="px-3 py-1.5 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground text-sm font-medium transition-colors">In one week</button>
+              <button onClick={() => setDateOffset(14)} className="px-3 py-1.5 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground text-sm font-medium transition-colors">In two weeks</button>
+              <button onClick={() => setDateOffset(0, 1)} className="px-3 py-1.5 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground text-sm font-medium transition-colors">In one month</button>
+              <button onClick={() => setDateOffset(0, 3)} className="px-3 py-1.5 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground text-sm font-medium transition-colors">In three months</button>
+            </div>
+
+            <div className="w-full text-left text-sm font-semibold text-foreground mb-1">
+              Reason for the due date
+            </div>
+
+            <textarea
+              value={dueDateReasonInput}
+              onChange={(e) => setDueDateReasonInput(e.target.value)}
+              className="w-full border border-border/70 p-3 min-h-[120px] resize-y text-base focus:outline-none bg-card/50 shadow-inner rounded-sm mb-4"
+            />
+
+            <Button
+              className="w-full bg-[#7de8d4] hover:bg-[#5bcbb7] text-[#0a1715] font-semibold py-6 rounded-sm shadow-md text-base"
+              onClick={handleSaveDueDate}
+              disabled={isSavingDueDate || !dueDateInput}
+            >
+              {isSavingDueDate ? "SAVING..." : "SAVE"}
+            </Button>
+
+            {Boolean(currentDueDate) && (
+              <div className="w-full flex justify-end mt-4">
+                <button
+                  onClick={() => setShowDeleteDueDateModal(true)}
+                  className="text-muted-foreground hover:text-destructive p-1 transition-colors"
+                  title="Remove due date"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* OVERLAY DEL MODAL DELETE DUE DATE */}
+      {showDeleteDueDateModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-white/90 backdrop-blur-sm">
+          <div className="flex flex-col items-center bg-transparent p-6 max-w-md w-full text-center">
+            <h2 className="text-3xl font-normal mb-6 text-foreground">Delete due date</h2>
+            <p className="text-lg mb-2 font-medium">Are you sure you want to delete?</p>
+            <p className="text-base text-muted-foreground mb-10 italic">
+              {currentDueDateReason ? `"${currentDueDateReason}"` : "The due date for this issue"}
+            </p>
+            <div className="flex items-center gap-6">
+              <button
+                className="text-[#008484] hover:underline font-medium px-4"
+                onClick={() => setShowDeleteDueDateModal(false)}
+                disabled={isDeletingDueDate}
+              >
+                Cancel
+              </button>
+              <Button
+                variant="destructive"
+                className="bg-[#e03a3e] hover:bg-[#c93236] text-white px-6 rounded-sm shadow-md"
+                onClick={handleDeleteDueDate}
+                disabled={isDeletingDueDate}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                {isDeletingDueDate ? "DELETING..." : "DELETE"}
               </Button>
             </div>
           </div>

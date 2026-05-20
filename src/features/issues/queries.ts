@@ -217,3 +217,28 @@ export function useRemoveIssueWatcher() {
     },
   });
 }
+
+export function useSetIssueDueDate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: { deadline?: string; due_date_reason?: string } }) =>
+      // Fem servir 'as any' per esquivar errors del swagger generat, ja que li passem els camps correctes
+      unwrap(await api.PATCH("/api/issues/{id}/due-date/", { params: { path: { id } }, body: data as unknown as never })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+      void qc.invalidateQueries({ queryKey: qk.issues.list({}) });
+    },
+  });
+}
+
+export function useRemoveIssueDueDate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) =>
+      unwrap(await api.DELETE("/api/issues/{id}/due-date/", { params: { path: { id } } })),
+    onSuccess: (_, id) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(id) });
+      void qc.invalidateQueries({ queryKey: qk.issues.list({}) });
+    },
+  });
+}

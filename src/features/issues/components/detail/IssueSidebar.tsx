@@ -13,6 +13,8 @@ import {
   useToggleIssueWatch,
   useAddIssueWatcher,
   useRemoveIssueWatcher,
+  useAssignIssue,
+  useUnassignIssue,
   useSetIssueDueDate,
   useRemoveIssueDueDate
 } from "@/features/issues/queries";
@@ -185,6 +187,13 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
   const [watcherSearch, setWatcherSearch] = useState("");
   const [tempSelectedWatcherIds, setTempSelectedWatcherIds] = useState<string[]>([]);
   const [isSavingWatchers, setIsSavingWatchers] = useState(false);
+  // Modal assignee
+  const [isAssigneeModalOpen, setIsAssigneeModalOpen] = useState(false);
+  const [assigneeSearch, setAssigneeSearch] = useState("");
+  const [tempAssigneeId, setTempAssigneeId] = useState<string | null>(null);
+  const [isSavingAssignee, setIsSavingAssignee] = useState(false);
+  const [showUnassignModal, setShowUnassignModal] = useState(false);
+
 
   // Estats per al Due Date
   const [isDueDateModalOpen, setIsDueDateModalOpen] = useState(false);
@@ -202,6 +211,8 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
   const { mutateAsync: toggleWatch, isPending: isToggling } = useToggleIssueWatch();
   const { mutateAsync: addWatcher } = useAddIssueWatcher();
   const { mutateAsync: removeWatcher } = useRemoveIssueWatcher();
+  const { mutateAsync: assignIssue } = useAssignIssue();
+  const { mutateAsync: unassignIssue } = useUnassignIssue();
   const { mutateAsync: setDueDate } = useSetIssueDueDate();
   const { mutateAsync: removeDueDate } = useRemoveIssueDueDate();
 
@@ -317,7 +328,52 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
       console.error("Error removing watcher", e);
     }
   };
+  
+  const handleAssignToMe = async () => {
+    if (!currentUser) return;
+    try {
+      await assignIssue({ id: issue.id as number, userId: Number(currentUser.id) });
+    } catch (e) {
+      console.error("Error assigning to me", e);
+    }
+  };
 
+  const handleUnassign = async () => {
+    try {
+      await unassignIssue(issue.id as number);
+      setShowUnassignModal(false);
+    } catch (e) {
+      console.error("Error unassigning", e);
+    }
+  };
+
+  const handleOpenAssigneeModal = () => {
+    setTempAssigneeId(assignee ? String(assignee.id) : null);
+    setAssigneeSearch("");
+    setIsAssigneeModalOpen(true);
+  };
+
+  const handleSaveAssignee = async () => {
+    setIsSavingAssignee(true);
+    try {
+      if (tempAssigneeId === null) {
+        await unassignIssue(issue.id as number);
+      } else {
+        await assignIssue({ id: issue.id as number, userId: Number(tempAssigneeId) });
+      }
+      setIsAssigneeModalOpen(false);
+    } catch (e) {
+      console.error("Error saving assignee", e);
+    } finally {
+      setIsSavingAssignee(false);
+    }
+  };
+
+  const filteredAssigneeUsers = allUsers.filter((u) =>
+    u.username.toLowerCase().includes(assigneeSearch.toLowerCase()),
+  );
+
+  // Filtrem els usuaris del cercador dins del modal
   const filteredUsers = allUsers.filter(u =>
     u.username.toLowerCase().includes(watcherSearch.toLowerCase())
   );
@@ -397,21 +453,54 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
         {/* ASSIGNED */}
         <div className="flex flex-col gap-3">
           <span className="text-xs font-bold uppercase text-muted-foreground">Assigned</span>
-          <div className="flex items-center justify-between">
-            {assignee ? (
-              <div className="flex items-center gap-2">
-                <Avatar className="size-6">
-                  <AvatarImage src={assignee.avatar ?? undefined} />
-                  <AvatarFallback className="text-[10px] bg-muted">{initials(assignee.username)}</AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium">{assignee.username}</span>
+
+          {assignee && (
+            <div className="flex flex-col mt-1 mb-2">
+              <div className="group flex items-center justify-between hover:bg-muted/30 p-1.5 -mx-1.5 rounded transition-colors">
+                <div className="flex items-center gap-2">
+                  <Avatar className="size-8 shrink-0">
+                    <AvatarImage src={assignee.avatar ?? undefined} />
+                    <AvatarFallback className="text-[10px] bg-muted">
+                      {initials(assignee.username)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-[#008484] hover:underline cursor-pointer truncate">
+                    {assignee.username}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setShowUnassignModal(true)}
+                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 transition-opacity shrink-0"
+                  title="Remove assignee"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-            ) : (
-              <button className="text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-1">
-                + Add assigned
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-2">
+            <button
+              onClick={handleOpenAssigneeModal}
+              className="text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+            >
+              {assignee ? (
+                <>
+                  <span className="text-base leading-none">⇄</span> Change assigned
+                </>
+              ) : (
+                <>+ Add assigned</>
+              )}
+            </button>
+
+            {assignee?.username !== currentUser?.username && (
+              <button
+                onClick={handleAssignToMe}
+                className="text-sm font-medium flex items-center gap-1 px-2 py-1 rounded transition-colors shrink-0 text-muted-foreground hover:text-foreground"
+              >
+                Assign to me
               </button>
             )}
-            <button className="text-sm text-primary hover:underline">Assign to me</button>
           </div>
         </div>
 
@@ -622,51 +711,122 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
           </div>
         </div>
       )}
+      
+      {/* MODAL ASSIGNEE */}
+      {isAssigneeModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/90 backdrop-blur-sm">
+          <div className="flex flex-col items-center bg-transparent p-6 max-w-xl w-full text-center">
+            <h2 className="text-3xl font-normal mb-8 text-foreground">Assign user</h2>
+            <input
+              type="text"
+              placeholder="Search for users"
+              value={assigneeSearch}
+              onChange={(e) => setAssigneeSearch(e.target.value)}
+              className="w-full border-2 border-[#7de8d4] p-2 focus:outline-none text-base text-foreground bg-transparent mb-6 shadow-inner rounded-sm"
+              autoFocus
+            />
+            <div className="w-full flex flex-col max-h-[50vh] overflow-y-auto pr-2 gap-1 mb-10 text-left border border-border/50 rounded-sm bg-card/50 p-2 shadow-inner">
+              <div
+                className={`flex items-center justify-between w-full p-2.5 rounded transition-colors cursor-pointer ${
+                  tempAssigneeId === null ? "bg-primary/5" : "hover:bg-muted/50"
+                }`}
+                onClick={() => setTempAssigneeId(null)}
+              >
+                <span className="text-base text-muted-foreground italic">No assignee</span>
+                <div
+                  className={`size-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                    tempAssigneeId === null ? "border-primary bg-primary" : "border-border bg-card"
+                  }`}
+                >
+                  {tempAssigneeId === null && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
+                </div>
+              </div>
+              {filteredAssigneeUsers.length > 0 ? (
+                filteredAssigneeUsers.map((user) => {
+                  const isSelected = tempAssigneeId === String(user.id);
+                  return (
+                    <div
+                      key={user.id}
+                      className={`flex items-center justify-between w-full p-2.5 rounded transition-colors cursor-pointer ${
+                        isSelected ? "bg-primary/5" : "hover:bg-muted/50"
+                      }`}
+                      onClick={() => setTempAssigneeId(String(user.id))}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className="size-10 shrink-0 border border-border">
+                          <AvatarImage src={user.avatar ?? undefined} />
+                          <AvatarFallback className="text-sm bg-muted">{initials(user.username)}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-base text-foreground font-medium">{user.username}</span>
+                      </div>
+                      <div
+                        className={`size-6 rounded-full border-2 flex items-center justify-center transition-colors ${
+                          isSelected ? "border-primary bg-primary" : "border-border bg-card"
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center text-muted-foreground p-8 text-lg">No users found</div>
+              )}
+            </div>
+            <div className="flex items-center gap-8">
+              <button
+                className="text-[#008484] hover:underline text-lg font-medium px-4"
+                onClick={() => { setIsAssigneeModalOpen(false); setAssigneeSearch(""); }}
+                disabled={isSavingAssignee}
+              >
+                Cancel
+              </button>
+              <Button
+                className="bg-primary hover:bg-primary/90 text-white px-8 py-2 rounded-sm shadow-md text-lg h-auto"
+                onClick={handleSaveAssignee}
+                disabled={isSavingAssignee}
+              >
+                <Check className="w-5 h-5 mr-2" />
+                {isSavingAssignee ? "SAVING..." : "SAVE"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* OVERLAY DEL MODAL DUE DATE */}
       {isDueDateModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/90 backdrop-blur-sm">
           <div className="flex flex-col items-center bg-transparent p-8 max-w-3xl w-full text-center relative">
-
             <button
               onClick={() => setIsDueDateModalOpen(false)}
               className="absolute -top-10 right-0 p-2 text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
-
             <h2 className="text-4xl font-normal mb-8 text-foreground">Set due date</h2>
-
-
             <input
               type="date"
               ref={dateInputRef}
               value={dueDateInput}
               onChange={(e) => setDueDateInput(e.target.value)}
-              onClick={() => {
-                // Força l'obertura del calendari natiu en clicar qualsevol part del requadre
-                dateInputRef.current?.showPicker();
-              }}
+              onClick={() => { dateInputRef.current?.showPicker(); }}
               className="w-full border-2 border-[#7de8d4] p-3 focus:outline-none text-base text-foreground bg-transparent mb-4 shadow-inner rounded-sm cursor-pointer"
             />
-
             <div className="flex flex-wrap items-center justify-center gap-2 mb-6 w-full">
               <button onClick={() => setDateOffset(7)} className="px-3 py-1.5 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground text-sm font-medium transition-colors">In one week</button>
               <button onClick={() => setDateOffset(14)} className="px-3 py-1.5 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground text-sm font-medium transition-colors">In two weeks</button>
               <button onClick={() => setDateOffset(0, 1)} className="px-3 py-1.5 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground text-sm font-medium transition-colors">In one month</button>
               <button onClick={() => setDateOffset(0, 3)} className="px-3 py-1.5 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground text-sm font-medium transition-colors">In three months</button>
             </div>
-
             <div className="w-full text-left text-sm font-semibold text-foreground mb-1">
               Reason for the due date
             </div>
-
             <textarea
               value={dueDateReasonInput}
               onChange={(e) => setDueDateReasonInput(e.target.value)}
               className="w-full border border-border/70 p-3 min-h-[120px] resize-y text-base focus:outline-none bg-card/50 shadow-inner rounded-sm mb-4"
             />
-
             <Button
               className="w-full bg-[#7de8d4] hover:bg-[#5bcbb7] text-[#0a1715] font-semibold py-6 rounded-sm shadow-md text-base"
               onClick={handleSaveDueDate}
@@ -674,7 +834,6 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
             >
               {isSavingDueDate ? "SAVING..." : "SAVE"}
             </Button>
-
             {Boolean(currentDueDate) && (
               <div className="w-full flex justify-end mt-4">
                 <button
@@ -686,6 +845,33 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL UNASSIGN */}
+      {showUnassignModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/90 backdrop-blur-sm">
+          <div className="flex flex-col items-center bg-transparent p-6 max-w-md w-full text-center">
+            <h2 className="text-3xl font-normal mb-6 text-foreground">Remove assignee</h2>
+            <p className="text-lg mb-2 font-medium">Are you sure you want to remove this assignee?</p>
+            <p className="text-base text-muted-foreground mb-10">{assignee?.username}</p>
+            <div className="flex items-center gap-6">
+              <button
+                className="text-[#008484] hover:underline font-medium px-4"
+                onClick={() => setShowUnassignModal(false)}
+              >
+                Cancel
+              </button>
+              <Button
+                variant="destructive"
+                className="bg-[#e03a3e] hover:bg-[#c93236] text-white px-6 rounded-sm shadow-md"
+                onClick={handleUnassign}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                REMOVE
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -720,7 +906,6 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
           </div>
         </div>
       )}
-
     </>
   );
 }

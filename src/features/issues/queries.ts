@@ -142,3 +142,37 @@ export function useDeleteComment() {
     },
   });
 }
+
+export function useAddIssueAttachment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, file }: { id: number; file: File }) => {
+      // 1. Creem un objecte FormData natiu de JavaScript
+      const formData = new FormData();
+      // 2. Hi afegim el nostre arxiu sota la clau "file" (el que espera el backend)
+      formData.append("file", file);
+
+      return unwrap(await api.POST("/api/issues/{id}/attachments/", {
+        params: { path: { id } },
+        // 3. Passem el formData forçant el tipus de manera segura pel linter
+        body: formData as unknown as never,
+      }));
+    },
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+    },
+  });
+}
+
+export function useDeleteIssueAttachment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, attachmentId }: { id: number; attachmentId: number }) =>
+      unwrap(await api.DELETE("/api/issues/{id}/attachments/{attachment_id}/", {
+        params: { path: { id, attachment_id: attachmentId } },
+      })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+    },
+  });
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type components } from "@/lib/api/schema";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -97,6 +97,27 @@ export function IssueActivity({ issue }: IssueActivityProps) {
 
   // estat per l'ordre dels comentaris i activitats (default Newest first)
   const [isOlderFirst, setIsOlderFirst] = useState(false);
+
+  // Scroll cap al comentari indicat pel hash (#comment-<id>) un cop carregat
+  const [highlightCommentId, setHighlightCommentId] = useState<number | null>(null);
+  const didScrollToHash = useRef(false);
+
+  useEffect(() => {
+    if (didScrollToHash.current || issue.comments.length === 0) return;
+    const match = window.location.hash.match(/^#comment-(\d+)$/);
+    if (!match) return;
+    const id = Number(match[1]);
+    const el = document.getElementById(`comment-${id}`);
+    if (!el) return;
+    didScrollToHash.current = true;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    const raf = requestAnimationFrame(() => setHighlightCommentId(id));
+    const timer = setTimeout(() => setHighlightCommentId(null), 2400);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timer);
+    };
+  }, [issue.comments]);
 
   // Ordenem els comentaris just abans de pintar-los
   const sortedComments = [...comments].sort((a, b) => {
@@ -203,7 +224,15 @@ export function IssueActivity({ issue }: IssueActivityProps) {
               const isCurrentlyEditing = editingCommentId === comment.id;
 
               return (
-                <div key={comment.id} className="flex gap-4 group">
+                <div
+                  key={comment.id}
+                  id={`comment-${comment.id}`}
+                  className={`flex gap-4 group scroll-mt-24 rounded-md transition-shadow ${
+                    highlightCommentId === comment.id
+                      ? "ring-2 ring-primary/60 -m-2 p-2"
+                      : ""
+                  }`}
+                >
                   <Avatar className="size-10 shrink-0">
                     <AvatarImage src={user?.avatar ?? undefined} />
                     <AvatarFallback className="bg-muted text-sm">

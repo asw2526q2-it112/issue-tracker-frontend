@@ -176,3 +176,44 @@ export function useDeleteIssueAttachment() {
     },
   });
 }
+
+// Hook per fer el Toggle del watcher (adaptat a la teva ruta)
+export function useToggleIssueWatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) =>
+      unwrap(await api.POST("/api/issues/{id}/watchers/toggle/", { params: { path: { id } } })),
+    onSuccess: (_, id) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(id) });
+    },
+  });
+}
+
+export function useAddIssueWatcher() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, userId }: { id: number; userId: number }) =>
+      unwrap(await api.POST("/api/issues/{id}/watchers/", {
+        params: { path: { id } },
+        // L'API normalment espera l'ID de l'usuari. 
+        // Fem servir el 'as unknown as never' perquè el linter no es queixi del tipus
+        body: { user_id: userId } as unknown as never
+      })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+    },
+  });
+}
+
+export function useRemoveIssueWatcher() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, userId }: { id: number; userId: number }) =>
+      unwrap(await api.DELETE("/api/issues/{id}/watchers/{user_id}/", {
+        params: { path: { id, user_id: userId } }
+      })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+    },
+  });
+}

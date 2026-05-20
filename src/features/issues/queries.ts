@@ -58,3 +58,162 @@ export function useBulkCreateIssues() {
     },
   });
 }
+
+export function useDeleteIssue() {
+  const qc = useQueryClient();
+  return useMutation({
+    // Cridem al mètode DELETE tipat passant-li l'ID per la URL
+    mutationFn: async (id: number) =>
+      unwrap(await api.DELETE("/api/issues/{id}/", { params: { path: { id } } })),
+    onSuccess: () => {
+      // Quan s'esborri correctament, invalidem la llista perquè React Query la torni a carregar automàticament
+      void qc.invalidateQueries({ queryKey: qk.issues.list({}) });
+    },
+  });
+}
+
+export function useUpdateIssue() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: components["schemas"]["PatchedIssueWriteFormRequest"] }) =>
+      unwrap(await api.PATCH("/api/issues/{id}/", { params: { path: { id } }, body: data })),
+    onSuccess: (_, variables) => {
+      // Refresquem tant el detall de l'issue com la llista general un cop guardat
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+      void qc.invalidateQueries({ queryKey: qk.issues.list({}) });
+    },
+  });
+}
+
+export function useAddIssueTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    // Fem servir el tipus correcte de l'esquema per al paràmetre data
+    mutationFn: async ({ id, data }: { id: number; data: components["schemas"]["TagAttachWriteRequest"] }) =>
+      unwrap(await api.POST("/api/issues/{id}/tags/", { params: { path: { id } }, body: data })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+      void qc.invalidateQueries({ queryKey: qk.issues.list({}) });
+    },
+  });
+}
+
+export function useRemoveIssueTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, tagId }: { id: number; tagId: number }) =>
+      unwrap(await api.DELETE("/api/issues/{id}/tags/{tag_id}/", { params: { path: { id, tag_id: tagId } } })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+      void qc.invalidateQueries({ queryKey: qk.issues.list({}) });
+    },
+  });
+}
+
+export function useAddComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: { text: string } }) =>
+      unwrap(await api.POST("/api/issues/{id}/comments/", { params: { path: { id } }, body: data })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+    },
+  });
+}
+
+export function useEditComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, commentId, data }: { id: number; commentId: number; data: { text: string } }) =>
+      unwrap(await api.PATCH("/api/issues/{id}/comments/{comment_id}/", { params: { path: { id, comment_id: commentId } }, body: data })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+    },
+  });
+}
+
+export function useDeleteComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, commentId }: { id: number; commentId: number }) =>
+      unwrap(await api.DELETE("/api/issues/{id}/comments/{comment_id}/", { params: { path: { id, comment_id: commentId } } })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+    },
+  });
+}
+
+export function useAddIssueAttachment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, file }: { id: number; file: File }) => {
+      // 1. Creem un objecte FormData natiu de JavaScript
+      const formData = new FormData();
+      // 2. Hi afegim el nostre arxiu sota la clau "file" (el que espera el backend)
+      formData.append("file", file);
+
+      return unwrap(await api.POST("/api/issues/{id}/attachments/", {
+        params: { path: { id } },
+        // 3. Passem el formData forçant el tipus de manera segura pel linter
+        body: formData as unknown as never,
+      }));
+    },
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+    },
+  });
+}
+
+export function useDeleteIssueAttachment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, attachmentId }: { id: number; attachmentId: number }) =>
+      unwrap(await api.DELETE("/api/issues/{id}/attachments/{attachment_id}/", {
+        params: { path: { id, attachment_id: attachmentId } },
+      })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+    },
+  });
+}
+
+// Hook per fer el Toggle del watcher (adaptat a la teva ruta)
+export function useToggleIssueWatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) =>
+      unwrap(await api.POST("/api/issues/{id}/watchers/toggle/", { params: { path: { id } } })),
+    onSuccess: (_, id) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(id) });
+    },
+  });
+}
+
+export function useAddIssueWatcher() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, userId }: { id: number; userId: number }) =>
+      unwrap(await api.POST("/api/issues/{id}/watchers/", {
+        params: { path: { id } },
+        // L'API normalment espera l'ID de l'usuari. 
+        // Fem servir el 'as unknown as never' perquè el linter no es queixi del tipus
+        body: { user_id: userId } as unknown as never
+      })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+    },
+  });
+}
+
+export function useRemoveIssueWatcher() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, userId }: { id: number; userId: number }) =>
+      unwrap(await api.DELETE("/api/issues/{id}/watchers/{user_id}/", {
+        params: { path: { id, user_id: userId } }
+      })),
+    onSuccess: (_, variables) => {
+      void qc.invalidateQueries({ queryKey: qk.issues.detail(variables.id) });
+    },
+  });
+}

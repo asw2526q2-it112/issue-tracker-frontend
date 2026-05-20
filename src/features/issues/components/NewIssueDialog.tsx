@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 
 import { useCreateIssue } from "../queries";
 import { issueFormSchema, type IssueFormValues } from "../schemas";
@@ -62,43 +62,43 @@ export function NewIssueDialog({ open, onOpenChange }: Props) {
   const { data: statuses } = useStatuses();
   const { data: users } = useUsers();
 
-  const typeList     = types      && "results" in types      ? types.results      : (types      ?? []);
+  const typeList = types && "results" in types ? types.results : (types ?? []);
   const severityList = severities && "results" in severities ? severities.results : (severities ?? []);
   const priorityList = priorities && "results" in priorities ? priorities.results : (priorities ?? []);
-  const statusList   = statuses   && "results" in statuses   ? statuses.results   : (statuses   ?? []);
+  const statusList = statuses && "results" in statuses ? statuses.results : (statuses ?? []);
 
   const currentUser = getCurrentUser();
 
   const form = useForm<IssueFormValues, unknown, IssueFormValues>({
     resolver: zodResolver(issueFormSchema),
     defaultValues: {
-      subject:     "",
+      subject: "",
       description: "",
       assigned_to: null,
-      deadline:    null,
+      deadline: null,
     },
   });
 
-  const watchedType     = form.watch("type");
-  const watchedSeverity = form.watch("severity");
-  const watchedPriority = form.watch("priority");
-  const watchedStatus   = form.watch("status");
-  const statusColor     = statusList.find((s) => s.id === watchedStatus)?.color;
+  const watchedType = useWatch({ control: form.control, name: "type" });
+  const watchedSeverity = useWatch({ control: form.control, name: "severity" });
+  const watchedPriority = useWatch({ control: form.control, name: "priority" });
+  const watchedStatus = useWatch({ control: form.control, name: "status" });
+  const statusColor = statusList.find((s) => s.id === watchedStatus)?.color;
 
-  const typeColor     = typeList.find((t) => t.id === watchedType)?.color;
+  const typeColor = typeList.find((t) => t.id === watchedType)?.color;
   const severityColor = severityList.find((s) => s.id === watchedSeverity)?.color;
   const priorityColor = priorityList.find((p) => p.id === watchedPriority)?.color;
 
   async function onSubmit(values: IssueFormValues) {
     await createIssue({
-      subject:     values.subject,
+      subject: values.subject,
       description: values.description ?? "",
       assigned_to: values.assigned_to ?? null,
-      type:        values.type!,
-      severity:    values.severity!,
-      priority:    values.priority!,
-      status:      values.status!,
-      deadline:    values.deadline ?? null,
+      type: values.type!,
+      severity: values.severity!,
+      priority: values.priority!,
+      status: values.status!,
+      deadline: values.deadline ?? null,
     });
     form.reset();
     onOpenChange(false);
@@ -158,82 +158,82 @@ export function NewIssueDialog({ open, onOpenChange }: Props) {
 
                 {/* Status — prominent, no label */}
                 <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="text-xs uppercase tracking-wide text-muted-foreground">
+                      <FormLabel className="text-xs uppercase tracking-wide text-muted-foreground">
                         Status
                       </FormLabel>
-                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
                         <Select
-                        value={field.value != null ? String(field.value) : ""}
-                        onValueChange={(v) => field.onChange(Number(v))}
+                          value={field.value != null ? String(field.value) : ""}
+                          onValueChange={(v) => field.onChange(Number(v))}
                         >
-                        <FormControl>
+                          <FormControl>
                             <SelectTrigger className="flex-1 font-medium">
-                            <SelectValue placeholder="Select status…" />
+                              <SelectValue placeholder="Select status…" />
                             </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
+                          </FormControl>
+                          <SelectContent>
                             {statusList.map((s) => (
-                            <SelectItem key={s.id} value={String(s.id)}>
+                              <SelectItem key={s.id} value={String(s.id)}>
                                 {s.name}
-                            </SelectItem>
+                              </SelectItem>
                             ))}
-                        </SelectContent>
+                          </SelectContent>
                         </Select>
                         <ColorDot color={statusColor} />
-                    </div>
-                    <FormMessage />
+                      </div>
+                      <FormMessage />
                     </FormItem>
-                )}
+                  )}
                 />
 
                 {/* Assign to */}
                 <FormField
-  control={form.control}
-  name="assigned_to"
-  render={({ field }) => (
-    <FormItem>
-      <FormLabel className="text-xs uppercase tracking-wide text-muted-foreground">
-        assign to
-      </FormLabel>
-      <Select
-        value={field.value != null ? String(field.value) : "__none__"}
-        onValueChange={(v) =>
-          field.onChange(v === "__none__" ? null : Number(v))
-        }
-      >
-        <FormControl>
-          <SelectTrigger>
-            <SelectValue placeholder="Unassigned" />
-          </SelectTrigger>
-        </FormControl>
-        <SelectContent>
-          <SelectItem value="__none__">Unassigned</SelectItem>
-          {users.find((u) => u.username === currentUser.username) && (
-            <SelectItem
-              value={String(
-                users.find((u) => u.username === currentUser.username)!.id,
-              )}
-            >
-              Assign to me ({currentUser.username})
-            </SelectItem>
-          )}
-          {users
-            .filter((u) => u.username !== currentUser.username)
-            .map((u) => (
-              <SelectItem key={u.id} value={String(u.id)}>
-                {u.username}
-              </SelectItem>
-            ))}
-        </SelectContent>
-      </Select>
-      <FormMessage />
-    </FormItem>
-  )}
-/>
+                  control={form.control}
+                  name="assigned_to"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs uppercase tracking-wide text-muted-foreground">
+                        assign to
+                      </FormLabel>
+                      <Select
+                        value={field.value != null ? String(field.value) : "__none__"}
+                        onValueChange={(v) =>
+                          field.onChange(v === "__none__" ? null : Number(v))
+                        }
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Unassigned" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="__none__">Unassigned</SelectItem>
+                          {users.find((u) => u.username === currentUser.username) && (
+                            <SelectItem
+                              value={String(
+                                users.find((u) => u.username === currentUser.username)!.id,
+                              )}
+                            >
+                              Assign to me ({currentUser.username})
+                            </SelectItem>
+                          )}
+                          {users
+                            .filter((u) => u.username !== currentUser.username)
+                            .map((u) => (
+                              <SelectItem key={u.id} value={String(u.id)}>
+                                {u.username}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 {/* Type */}
                 <FormField

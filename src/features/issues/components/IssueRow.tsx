@@ -68,13 +68,13 @@ export function IssueRow({ issue, colorMap }: IssueRowProps) {
         | null
         | undefined;
 
-    // Esto arregla tanto el error de React como el mapeo de colores.
     const typeName = getFieldName(issue.type);
     const severityName = getFieldName(issue.severity);
     const priorityName = getFieldName(issue.priority);
     const statusName = getFieldName(issue.status);
 
-    const tagsList = getTags(issue.tags);
+    // Transformem la resposta de l'API al tipus correcte igual que a l'IssueHeader
+    const issueTags = (issue.tags as unknown as { id: number; name: string; color: string }[]) || [];
 
     return (
         <div className="grid grid-cols-[3rem_5rem_5rem_1fr_5rem_5.5rem_5.5rem] items-center justify-items-center gap-x-4 gap-y-0 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-muted/40">
@@ -107,14 +107,15 @@ export function IssueRow({ issue, colorMap }: IssueRowProps) {
                     </Link>
                 </div>
                 {/* Tags */}
-                {tagsList.length > 0 && (
-                    <div className="mt-0.5 flex flex-wrap gap-1">
-                        {tagsList.map((tag, idx) => (
+                {issueTags.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                        {issueTags.map((tag) => (
                             <span
-                                key={`${tag}-${idx}`}
-                                className="rounded-full bg-muted px-2 py-px text-[10px] font-medium text-muted-foreground"
+                                key={tag.id}
+                                className="rounded-sm px-2 py-px text-[10px] font-semibold text-white shadow-sm"
+                                style={{ backgroundColor: tag.color }}
                             >
-                                {tag}
+                                {tag.name}
                             </span>
                         ))}
                     </div>

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { type components } from "@/lib/api/schema";
-import { ChevronLeft, Plus, X, Pencil, Save } from "lucide-react";
+// ARREGLAT: Hem afegit el 'Clock' a les icones importades
+import { ChevronLeft, Plus, X, Pencil, Save, Clock } from "lucide-react";
 import { useUpdateIssue, useAddIssueTag, useRemoveIssueTag } from "@/features/issues/queries";
 
 type IssueDetail = components["schemas"]["IssueDetail"];
@@ -47,7 +48,6 @@ export function IssueHeader({ issue, canEdit, allTags }: IssueHeaderProps) {
 
   const creator = issue.creator as components["schemas"]["UserMini"] | null | undefined;
 
-  // Transformem la resposta de l'API al tipus correcte
   const issueTags = (issue.tags as unknown as { id: number; name: string; color: string }[]) || [];
 
   // Tanquem els desplegables si es clica fora
@@ -101,10 +101,32 @@ export function IssueHeader({ issue, canEdit, allTags }: IssueHeaderProps) {
     }
   };
 
-  // Recomanacions de tags
   const filteredTags = allTags.filter(
     t => t.name.toLowerCase().includes(tagName.toLowerCase()) && !issueTags.some(it => it.id === t.id)
   );
+
+
+  const currentDueDate = (issue as Record<string, unknown>).deadline || (issue as Record<string, unknown>).due_date;
+  let clockColor = "";
+
+  if (currentDueDate) {
+    const [year, month, day] = String(currentDueDate).substring(0, 10).split('-');
+    const dueDateObj = new Date(Number(year), Number(month) - 1, Number(day));
+    dueDateObj.setHours(0, 0, 0, 0);
+
+    const todayObj = new Date();
+    todayObj.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.round((dueDateObj.getTime() - todayObj.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 0) {
+      clockColor = "#e03a3e"; // Vermell (avui o passat)
+    } else if (diffDays <= 14) {
+      clockColor = "#f39c12"; // Taronja (fins a 2 setmanes)
+    } else {
+      clockColor = "#2ecc71"; // Verd (més de 2 setmanes)
+    }
+  }
 
   return (
     <div className="flex flex-col border-b border-border pb-4">
@@ -137,6 +159,18 @@ export function IssueHeader({ issue, canEdit, allTags }: IssueHeaderProps) {
           >
             <span className="font-semibold text-primary/80">#{issue.id}</span>
             <span>{issue.subject}</span>
+
+
+            {Boolean(currentDueDate) && (
+              <span title={`Due date: ${String(currentDueDate).substring(0, 10)}`} className="flex items-center">
+                <Clock
+                  className="w-[18px] h-[18px] shrink-0 mt-1"
+                  color={clockColor}
+                  strokeWidth={2.5}
+                />
+              </span>
+            )}
+
             {canEdit && <Pencil className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer ml-1" />}
           </h1>
         )}
@@ -191,7 +225,6 @@ export function IssueHeader({ issue, canEdit, allTags }: IssueHeaderProps) {
                           key={t.id}
                           className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-muted text-sm text-foreground text-left"
                           onClick={async () => {
-                            // TANQUEM EL DESPLEGABLE I ENVIEM DIRECTAMENT
                             setShowSuggestions(false);
                             try {
                               await addTag({ id: issue.id as number, data: { name: t.name, color: t.color } });

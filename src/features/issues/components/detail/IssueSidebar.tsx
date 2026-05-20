@@ -70,7 +70,7 @@ function StatusDropdown({
   const currentColor = colorMap[statusName] || "#6c757d";
 
   return (
-    <div className="relative w-full z-50 mb-2" ref={ref}>
+    <div className="relative w-full mb-2" ref={ref}>
       <div className="flex items-center gap-3">
         <span className="text-foreground text-2xl font-light uppercase tracking-wide">
           {isClosed ? "CLOSED" : "OPEN"}
@@ -433,7 +433,7 @@ export function IssueSidebar({ issue, colorMap, options, canEdit }: IssueSidebar
           colorMap={colorMap}
         />
 
-        <div className="flex flex-col gap-4 text-sm relative z-40">
+        <div className="flex flex-col gap-4 text-sm relative">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">type</span>
             <InlineDropdown currentName={typeName} currentColor={colorMap[typeName]} options={options.type} onSelect={(id) => handleUpdateField("type", id)} canEdit={canEdit} />

@@ -48,29 +48,6 @@ function CommentEditor({
 
   return (
     <div className="w-full border border-border rounded-sm bg-card shadow-sm flex flex-col mt-2">
-      <div className="flex items-center gap-1 border-b border-border p-1.5 text-muted-foreground overflow-x-auto">
-        <button className="flex items-center gap-1 px-2 py-1 hover:bg-muted rounded text-sm font-medium text-foreground">
-          Paragraph <ChevronDownIcon className="w-3 h-3" />
-        </button>
-        <div className="w-px h-4 bg-border mx-1" />
-        <button className="p-1.5 hover:bg-muted rounded text-foreground"><Bold className="w-4 h-4" /></button>
-        <button className="p-1.5 hover:bg-muted rounded text-foreground"><Italic className="w-4 h-4" /></button>
-        <button className="p-1.5 hover:bg-muted rounded text-foreground"><Strikethrough className="w-4 h-4" /></button>
-        <button className="p-1.5 hover:bg-muted rounded text-foreground"><LinkIcon className="w-4 h-4" /></button>
-        <div className="w-px h-4 bg-border mx-1" />
-        <button className="p-1.5 hover:bg-muted rounded text-foreground"><List className="w-4 h-4" /></button>
-        <button className="p-1.5 hover:bg-muted rounded text-foreground"><ListOrdered className="w-4 h-4" /></button>
-        <button className="p-1.5 hover:bg-muted rounded text-foreground"><AlignLeft className="w-4 h-4" /></button>
-        <div className="w-px h-4 bg-border mx-1" />
-        <button className="p-1.5 hover:bg-muted rounded text-foreground"><ImageIcon className="w-4 h-4" /></button>
-        <button className="p-1.5 hover:bg-muted rounded text-foreground"><Quote className="w-4 h-4" /></button>
-        <button className="p-1.5 hover:bg-muted rounded text-foreground"><Table className="w-4 h-4" /></button>
-        <button className="p-1.5 hover:bg-muted rounded text-foreground"><Code className="w-4 h-4" /></button>
-        <button className="p-1.5 hover:bg-muted rounded text-foreground"><Minus className="w-4 h-4" /></button>
-        <div className="w-px h-4 bg-border mx-1" />
-        <button className="p-1.5 hover:bg-muted rounded text-foreground"><Undo className="w-4 h-4" /></button>
-        <button className="p-1.5 hover:bg-muted rounded text-foreground"><Redo className="w-4 h-4" /></button>
-      </div>
 
       <textarea
         value={text}
@@ -80,20 +57,20 @@ function CommentEditor({
       />
 
       <div className="flex items-center justify-between p-2 bg-muted/30 border-t border-border">
-        <span className="text-xs font-semibold px-2 text-muted-foreground bg-muted py-1 rounded">Markdown</span>
+        <span className="text-xs font-semibold px-2 text-muted-foreground bg-muted py-1 rounded"></span>
         <div className="flex gap-2">
+          <button
+            onClick={onCancel}
+            className="bg-muted hover:bg-muted/80 text-foreground px-4 py-1.5 rounded-sm text-sm font-medium transition-colors"
+          >
+            Cancel
+          </button>
           <button
             onClick={() => onSave(text)}
             disabled={isSaving || !text.trim()}
             className="bg-[#7de8d4] hover:bg-[#5bcbb7] disabled:opacity-50 text-[#0a1715] px-4 py-1.5 rounded-sm text-sm font-medium transition-colors"
           >
             {isSaving ? "Saving..." : "Save"}
-          </button>
-          <button
-            onClick={onCancel}
-            className="bg-muted hover:bg-muted/80 text-foreground px-4 py-1.5 rounded-sm text-sm font-medium transition-colors"
-          >
-            Cancel
           </button>
         </div>
       </div>

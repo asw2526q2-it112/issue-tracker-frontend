@@ -113,15 +113,23 @@ export function IssueActivity({ issue }: IssueActivityProps) {
   const { mutateAsync: deleteComment, isPending: isDeleting } = useDeleteComment();
 
   // Estats
+  const [activeTab, setActiveTab] = useState<"comments" | "activities">("comments");
   const [isAddingComment, setIsAddingComment] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [commentToDelete, setCommentToDelete] = useState<CommentRead | null>(null);
 
-  // NOU: Estat per l'ordre dels comentaris (per defecte "Older first" = true)
-  const [isOlderFirst, setIsOlderFirst] = useState(true);
+  // estat per l'ordre dels comentaris i activitats (default Newest first)
+  const [isOlderFirst, setIsOlderFirst] = useState(false);
 
   // Ordenem els comentaris just abans de pintar-los
   const sortedComments = [...comments].sort((a, b) => {
+    const timeA = new Date(a.created_at).getTime();
+    const timeB = new Date(b.created_at).getTime();
+    return isOlderFirst ? timeA - timeB : timeB - timeA;
+  });
+
+  // Ordenem les activitats (haurien d'estar ordenades)
+  const sortedActivities = [...activities].sort((a, b) => {
     const timeA = new Date(a.created_at).getTime();
     const timeB = new Date(b.created_at).getTime();
     return isOlderFirst ? timeA - timeB : timeB - timeA;
@@ -160,10 +168,24 @@ export function IssueActivity({ issue }: IssueActivityProps) {
       {/* Tabs / Header */}
       <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-2">
         <div className="flex items-center gap-6">
-          <button className="text-sm font-semibold text-foreground border-b-2 border-primary pb-2 -mb-[9px]">
+          <button
+            onClick={() => setActiveTab("comments")}
+            className={`text-sm font-semibold pb-2 -mb-[9px] transition-colors border-b-2 ${
+              activeTab === "comments"
+                ? "text-foreground border-primary"
+                : "text-muted-foreground hover:text-foreground border-transparent"
+            }`}
+          >
             {comments.length} Comments
           </button>
-          <button className="text-sm font-medium text-muted-foreground hover:text-foreground pb-2 -mb-[9px]">
+          <button
+            onClick={() => setActiveTab("activities")}
+            className={`text-sm font-semibold pb-2 -mb-[9px] transition-colors border-b-2 ${
+              activeTab === "activities"
+                ? "text-foreground border-primary"
+                : "text-muted-foreground hover:text-foreground border-transparent"
+            }`}
+          >
             {activities.length} Activities
           </button>
         </div>
@@ -178,86 +200,125 @@ export function IssueActivity({ issue }: IssueActivityProps) {
         </button>
       </div>
 
-      {/* Caixa principal per escriure un comentari nou */}
-      {isAddingComment ? (
-        <CommentEditor
-          onSave={handleAddComment}
-          onCancel={() => setIsAddingComment(false)}
-          isSaving={isAdding}
-        />
+      {activeTab === "comments" ? (
+        <>
+          {/* Caixa principal per escriure un comentari nou */}
+          {isAddingComment ? (
+            <CommentEditor
+              onSave={handleAddComment}
+              onCancel={() => setIsAddingComment(false)}
+              isSaving={isAdding}
+            />
+          ) : (
+            <div
+              onClick={() => setIsAddingComment(true)}
+              className="border border-border p-3 bg-card rounded-sm text-muted-foreground text-sm cursor-text hover:bg-muted/30 transition-colors h-[60px]"
+            >
+              Type a new comment here
+            </div>
+          )}
+
+          {/* Llista de comentaris ORDENADA */}
+          <div className="flex flex-col gap-8 mt-6">
+            {sortedComments.map((comment) => {
+              const user = comment.creator as components["schemas"]["UserMini"] | null | undefined;
+              const isCreator = currentUser?.username === user?.username;
+              const isCurrentlyEditing = editingCommentId === comment.id;
+
+              return (
+                <div key={comment.id} className="flex gap-4 group">
+                  <Avatar className="size-10 shrink-0">
+                    <AvatarImage src={user?.avatar ?? undefined} />
+                    <AvatarFallback className="bg-muted text-sm">
+                      {user ? initials(user.username) : "??"}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="flex flex-col flex-1 gap-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm text-primary">{user?.username ?? "Unknown"}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(comment.created_at), "dd MMM yyyy HH:mm")}
+                        </span>
+                      </div>
+
+                      {/* Botons d'Editar i Esborrar (només per al creador) */}
+                      {isCreator && !isCurrentlyEditing && (
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => setEditingCommentId(comment.id as number)}
+                            className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                            title="Edit comment"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setCommentToDelete(comment)}
+                            className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                            title="Delete comment"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Contingut del comentari o Editor si l'estem editant */}
+                    {isCurrentlyEditing ? (
+                      <CommentEditor
+                        initialText={comment.text}
+                        onSave={(newText) => handleEditComment(comment.id as number, newText)}
+                        onCancel={() => setEditingCommentId(null)}
+                        isSaving={isEditing}
+                      />
+                    ) : (
+                      <div className="text-sm text-foreground whitespace-pre-wrap mt-1">
+                        {comment.text}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       ) : (
-        <div
-          onClick={() => setIsAddingComment(true)}
-          className="border border-border p-3 bg-card rounded-sm text-muted-foreground text-sm cursor-text hover:bg-muted/30 transition-colors h-[60px]"
-        >
-          Type a new comment here
-        </div>
-      )}
+        /* Llista d'activitats */
+        <div className="flex flex-col gap-6 mt-6">
+          {sortedActivities.length === 0 ? (
+            <div className="text-sm text-muted-foreground text-center py-8">
+              No activity history found.
+            </div>
+          ) : (
+            sortedActivities.map((act) => {
+              const user = act.user as components["schemas"]["UserMini"] | null | undefined;
+              return (
+                <div key={act.id} className="flex gap-4 items-start">
+                  <Avatar className="size-8 shrink-0 mt-0.5">
+                    <AvatarImage src={user?.avatar ?? undefined} />
+                    <AvatarFallback className="bg-muted text-xs">
+                      {user ? initials(user.username) : "??"}
+                    </AvatarFallback>
+                  </Avatar>
 
-      {/* Llista de comentaris ORDENADA */}
-      <div className="flex flex-col gap-8 mt-6">
-        {sortedComments.map((comment) => {
-          const user = comment.creator as components["schemas"]["UserMini"] | null | undefined;
-          const isCreator = currentUser?.username === user?.username;
-          const isCurrentlyEditing = editingCommentId === comment.id;
-
-          return (
-            <div key={comment.id} className="flex gap-4 group">
-              <Avatar className="size-10 shrink-0">
-                <AvatarImage src={user?.avatar ?? undefined} />
-                <AvatarFallback className="bg-muted text-sm">
-                  {user ? initials(user.username) : "??"}
-                </AvatarFallback>
-              </Avatar>
-
-              <div className="flex flex-col flex-1 gap-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-sm text-primary">{user?.username ?? "Unknown"}</span>
+                  <div className="flex flex-col flex-1 gap-1 min-w-0">
+                    <div className="text-sm text-foreground">
+                      <span className="font-semibold text-primary mr-2">
+                        {user?.username ?? "Unknown"}
+                      </span>
+                      <span className="text-muted-foreground">{act.action}</span>
+                    </div>
                     <span className="text-xs text-muted-foreground">
-                      {format(new Date(comment.created_at), "dd MMM yyyy HH:mm")}
+                      {format(new Date(act.created_at), "dd MMM yyyy HH:mm")}
                     </span>
                   </div>
-
-                  {/* Botons d'Editar i Esborrar (només per al creador) */}
-                  {isCreator && !isCurrentlyEditing && (
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => setEditingCommentId(comment.id as number)}
-                        className="text-muted-foreground hover:text-foreground transition-colors p-1"
-                        title="Edit comment"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setCommentToDelete(comment)}
-                        className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                        title="Delete comment"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
                 </div>
-
-                {/* Contingut del comentari o Editor si l'estem editant */}
-                {isCurrentlyEditing ? (
-                  <CommentEditor
-                    initialText={comment.text}
-                    onSave={(newText) => handleEditComment(comment.id as number, newText)}
-                    onCancel={() => setEditingCommentId(null)}
-                    isSaving={isEditing}
-                  />
-                ) : (
-                  <div className="text-sm text-foreground whitespace-pre-wrap mt-1">
-                    {comment.text}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {/* OVERLAY DEL MODAL D'ESBORRAR COMENTARI */}
       {commentToDelete && (

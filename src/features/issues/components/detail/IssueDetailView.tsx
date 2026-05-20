@@ -77,7 +77,7 @@ export function IssueDetailView({ issueId }: IssueDetailViewProps) {
   const canEdit = Boolean(currentUser && creator && currentUser.username === creator.username);
 
   return (
-    <div className="container max-w-[1200px] mx-auto p-4 md:p-8">
+    <div className="flex flex-1 flex-col p-8">
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Left Column - Main Content */}
         <div className="flex-1 flex flex-col gap-8 min-w-0">

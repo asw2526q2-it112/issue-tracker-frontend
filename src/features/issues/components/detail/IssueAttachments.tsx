@@ -6,6 +6,7 @@ import { Plus, LayoutGrid, List as ListIcon, Trash2, Paperclip, File as FileIcon
 import { Button } from "@/components/ui/button";
 import { useAddIssueAttachment, useDeleteIssueAttachment } from "@/features/issues/queries";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { number } from "zod";
 
 type IssueDetail = components["schemas"]["IssueDetail"];
 type AttachmentRead = components["schemas"]["AttachmentRead"];
@@ -21,7 +22,6 @@ export function IssueAttachments({ issue }: IssueAttachmentsProps) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const currentUser = getCurrentUser();
-  console.log(currentUser);
 
   const { mutateAsync: addAttachment, isPending: isAdding } = useAddIssueAttachment();
   const { mutateAsync: deleteAttachment, isPending: isDeleting } = useDeleteIssueAttachment();
@@ -132,8 +132,8 @@ export function IssueAttachments({ issue }: IssueAttachmentsProps) {
         <div className={viewMode === "list" ? "flex flex-col mt-1 border border-border divide-y divide-border bg-card" : "flex flex-wrap gap-4 mt-2"}>
           {attachments.map(att => {
 
-            const uploadedByAttr = att.uploaded_by as unknown;
-            const canDelete = att.uploaded_by === issue.creator.id;
+
+            const canDelete = att.uploaded_by === Number(currentUser.id);
 
             if (viewMode === "list") {
               return (

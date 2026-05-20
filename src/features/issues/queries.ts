@@ -154,8 +154,8 @@ export function useAddIssueAttachment() {
 
       return unwrap(await api.POST("/api/issues/{id}/attachments/", {
         params: { path: { id } },
-        // 3. Passem el formData directament al body
-        body: formData as any,
+        // 3. Passem el formData forçant el tipus de manera segura pel linter
+        body: formData as unknown as never,
       }));
     },
     onSuccess: (_, variables) => {

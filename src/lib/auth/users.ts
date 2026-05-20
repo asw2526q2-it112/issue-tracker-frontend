@@ -26,25 +26,25 @@ export type HardcodedUser = {
 
 export const USERS: readonly HardcodedUser[] = [
   {
-    id: "pol",
+    id: "4",
     username: "pol",
     displayName: "Pol Nebot",
     token: "4a0acd24b4d0ee707ca8611769f6ef18574a4cf7",
   },
   {
-    id: "oriol",
+    id: "3",
     username: "oriol",
     displayName: "Oriol Berruezo",
     token: "e5531b687af9488708488c0ad0f7658ae3cd472c",
   },
   {
-    id: "llorenc",
+    id: "2",
     username: "llorenc",
     displayName: "Llorenç Codinach",
     token: "fdc6b0a619703e6ddde951d45dfba0ae0156b0e9",
   },
   {
-    id: "gabriel",
+    id: "1",
     username: "gabriel",
     displayName: "Gabriel Escobar",
     token: "6405648ed2f699afcde302c45227af381edc8d1a",

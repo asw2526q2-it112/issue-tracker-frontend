@@ -303,17 +303,26 @@ export function IssueHeader({ issue, canEdit, allTags }: IssueHeaderProps) {
         <div className="flex items-center gap-3 text-sm text-muted-foreground text-right">
           <div className="flex flex-col items-end">
             <span className="flex items-center gap-1">
-              Created by <span className="text-primary font-medium">{creator?.username ?? "Unknown"}</span>
+              Created by
+              {creator ? (
+                <Link href={`/profile/${creator.username}`} className="text-primary font-medium hover:underline">
+                  {creator.username}
+                </Link>
+              ) : (
+                <span className="text-primary font-medium">Unknown</span>
+              )}
             </span>
             <span>{format(new Date(issue.created_at), "dd MMM yyyy HH:mm")}</span>
           </div>
           {creator && (
-            <Avatar className="size-8 border border-border">
-              <AvatarImage src={creator.avatar ?? undefined} />
-              <AvatarFallback className="text-xs bg-muted">
-                {initials(creator.username)}
-              </AvatarFallback>
-            </Avatar>
+            <Link href={`/profile/${creator.username}`}>
+              <Avatar className="size-8 border border-border hover:opacity-80 transition-opacity cursor-pointer">
+                <AvatarImage src={creator.avatar ?? undefined} />
+                <AvatarFallback className="text-xs bg-muted">
+                  {initials(creator.username)}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
           )}
         </div>
       </div>

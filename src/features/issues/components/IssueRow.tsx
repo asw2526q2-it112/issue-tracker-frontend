@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { type components } from "@/lib/api/schema";
 import { ColorDot } from "./ColorDot";
+import { Clock } from "lucide-react";
 
 type IssueRead = components["schemas"]["IssueRead"];
 
@@ -51,8 +52,31 @@ export function IssueRow({ issue, colorMap }: IssueRowProps) {
     const priorityName = getFieldName(issue.priority);
     const statusName = getFieldName(issue.status);
 
-    // Transformem la resposta de l'API al tipus correcte igual que a l'IssueHeader
+    // Transformem la resposta de l'API al tipus correcte
     const issueTags = (issue.tags as unknown as { id: number; name: string; color: string }[]) || [];
+
+    // Lògica de color de la Due Date (Idèntica al Header)
+    const currentDueDate = (issue as Record<string, unknown>).deadline || (issue as Record<string, unknown>).due_date;
+    let clockColor = "";
+
+    if (currentDueDate) {
+        const [year, month, day] = String(currentDueDate).substring(0, 10).split('-');
+        const dueDateObj = new Date(Number(year), Number(month) - 1, Number(day));
+        dueDateObj.setHours(0, 0, 0, 0);
+
+        const todayObj = new Date();
+        todayObj.setHours(0, 0, 0, 0);
+
+        const diffDays = Math.round((dueDateObj.getTime() - todayObj.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diffDays <= 0) {
+            clockColor = "#e03a3e"; // Vermell (avui o passat)
+        } else if (diffDays <= 14) {
+            clockColor = "#f39c12"; // Taronja (fins a 2 setmanes)
+        } else {
+            clockColor = "#2ecc71"; // Verd (més de 2 setmanes)
+        }
+    }
 
     return (
         <div className="grid grid-cols-[3rem_5rem_5rem_1fr_5rem_5.5rem_5.5rem] items-center justify-items-center gap-x-4 gap-y-0 border-b border-border px-4 py-3 transition-colors last:border-0 hover:bg-muted/40">
@@ -73,7 +97,7 @@ export function IssueRow({ issue, colorMap }: IssueRowProps) {
 
             {/* Issue id + subject */}
             <div className="min-w-0 w-full justify-self-start">
-                <div className="flex items-baseline gap-2">
+                <div className="flex items-center gap-2">
                     <span className="shrink-0 text-xs font-medium text-muted-foreground">
                         #{issue.id}
                     </span>
@@ -83,7 +107,17 @@ export function IssueRow({ issue, colorMap }: IssueRowProps) {
                     >
                         {issue.subject}
                     </Link>
+                    {Boolean(currentDueDate) && (
+                        <span title={`Due date: ${String(currentDueDate).substring(0, 10)}`} className="flex items-center">
+                            <Clock
+                                className="w-3.5 h-3.5 shrink-0"
+                                color={clockColor}
+                                strokeWidth={2.5}
+                            />
+                        </span>
+                    )}
                 </div>
+
                 {/* Tags */}
                 {issueTags.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
@@ -113,12 +147,14 @@ export function IssueRow({ issue, colorMap }: IssueRowProps) {
             {/* Assignee */}
             <div>
                 {assignee ? (
-                    <Avatar className="size-8">
-                        <AvatarImage src={assignee.avatar ?? undefined} />
-                        <AvatarFallback className="text-xs">
-                            {initials(assignee.username)}
-                        </AvatarFallback>
-                    </Avatar>
+                    <Link href={`/profile/${assignee.username}`}>
+                        <Avatar className="size-8 hover:opacity-80 transition-opacity cursor-pointer">
+                            <AvatarImage src={assignee.avatar ?? undefined} />
+                            <AvatarFallback className="text-xs">
+                                {initials(assignee.username)}
+                            </AvatarFallback>
+                        </Avatar>
+                    </Link>
                 ) : (
                     <div className="flex size-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
                         --

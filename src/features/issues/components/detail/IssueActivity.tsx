@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { type components } from "@/lib/api/schema";
 import { format } from "date-fns";
+import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -168,21 +169,19 @@ export function IssueActivity({ issue }: IssueActivityProps) {
         <div className="flex items-center gap-6">
           <button
             onClick={() => setActiveTab("comments")}
-            className={`text-sm font-semibold pb-2 -mb-[9px] transition-colors border-b-2 ${
-              activeTab === "comments"
-                ? "text-foreground border-primary"
-                : "text-muted-foreground hover:text-foreground border-transparent"
-            }`}
+            className={`text-sm font-semibold pb-2 -mb-[9px] transition-colors border-b-2 ${activeTab === "comments"
+              ? "text-foreground border-primary"
+              : "text-muted-foreground hover:text-foreground border-transparent"
+              }`}
           >
             {comments.length} Comments
           </button>
           <button
             onClick={() => setActiveTab("activities")}
-            className={`text-sm font-semibold pb-2 -mb-[9px] transition-colors border-b-2 ${
-              activeTab === "activities"
-                ? "text-foreground border-primary"
-                : "text-muted-foreground hover:text-foreground border-transparent"
-            }`}
+            className={`text-sm font-semibold pb-2 -mb-[9px] transition-colors border-b-2 ${activeTab === "activities"
+              ? "text-foreground border-primary"
+              : "text-muted-foreground hover:text-foreground border-transparent"
+              }`}
           >
             {activities.length} Activities
           </button>
@@ -227,23 +226,36 @@ export function IssueActivity({ issue }: IssueActivityProps) {
                 <div
                   key={comment.id}
                   id={`comment-${comment.id}`}
-                  className={`flex gap-4 group scroll-mt-24 rounded-md transition-shadow ${
-                    highlightCommentId === comment.id
-                      ? "ring-2 ring-primary/60 -m-2 p-2"
-                      : ""
-                  }`}
+                  className={`flex gap-4 group scroll-mt-24 rounded-md transition-shadow ${highlightCommentId === comment.id
+                    ? "ring-2 ring-primary/60 -m-2 p-2"
+                    : ""
+                    }`}
                 >
-                  <Avatar className="size-10 shrink-0">
-                    <AvatarImage src={user?.avatar ?? undefined} />
-                    <AvatarFallback className="bg-muted text-sm">
-                      {user ? initials(user.username) : "??"}
-                    </AvatarFallback>
-                  </Avatar>
+                  {/* Avatar amb enllaç */}
+                  {user ? (
+                    <Link href={`/profile/${user.username}`} className="shrink-0">
+                      <Avatar className="size-10 hover:opacity-80 transition-opacity cursor-pointer">
+                        <AvatarImage src={user.avatar ?? undefined} />
+                        <AvatarFallback className="bg-muted text-sm">{initials(user.username)}</AvatarFallback>
+                      </Avatar>
+                    </Link>
+                  ) : (
+                    <Avatar className="size-10 shrink-0">
+                      <AvatarFallback className="bg-muted text-sm">??</AvatarFallback>
+                    </Avatar>
+                  )}
 
                   <div className="flex flex-col flex-1 gap-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-primary">{user?.username ?? "Unknown"}</span>
+                        {/* Nom d'usuari amb enllaç */}
+                        {user ? (
+                          <Link href={`/profile/${user.username}`} className="font-semibold text-sm text-primary hover:underline">
+                            {user.username}
+                          </Link>
+                        ) : (
+                          <span className="font-semibold text-sm text-primary">Unknown</span>
+                        )}
                         <span className="text-xs text-muted-foreground">
                           {format(new Date(comment.created_at), "dd MMM yyyy HH:mm")}
                         </span>
@@ -301,18 +313,30 @@ export function IssueActivity({ issue }: IssueActivityProps) {
               const user = act.user as components["schemas"]["UserMini"] | null | undefined;
               return (
                 <div key={act.id} className="flex gap-4 items-start">
-                  <Avatar className="size-8 shrink-0 mt-0.5">
-                    <AvatarImage src={user?.avatar ?? undefined} />
-                    <AvatarFallback className="bg-muted text-xs">
-                      {user ? initials(user.username) : "??"}
-                    </AvatarFallback>
-                  </Avatar>
+                  {/* Avatar amb enllaç */}
+                  {user ? (
+                    <Link href={`/profile/${user.username}`} className="shrink-0 mt-0.5">
+                      <Avatar className="size-8 hover:opacity-80 transition-opacity cursor-pointer">
+                        <AvatarImage src={user.avatar ?? undefined} />
+                        <AvatarFallback className="bg-muted text-xs">{initials(user.username)}</AvatarFallback>
+                      </Avatar>
+                    </Link>
+                  ) : (
+                    <Avatar className="size-8 shrink-0 mt-0.5">
+                      <AvatarFallback className="bg-muted text-xs">??</AvatarFallback>
+                    </Avatar>
+                  )}
 
                   <div className="flex flex-col flex-1 gap-1 min-w-0">
                     <div className="text-sm text-foreground">
-                      <span className="font-semibold text-primary mr-2">
-                        {user?.username ?? "Unknown"}
-                      </span>
+                      {/* Nom d'usuari amb enllaç */}
+                      {user ? (
+                        <Link href={`/profile/${user.username}`} className="font-semibold text-primary mr-2 hover:underline">
+                          {user.username}
+                        </Link>
+                      ) : (
+                        <span className="font-semibold text-primary mr-2">Unknown</span>
+                      )}
                       <span className="text-muted-foreground">{act.action}</span>
                     </div>
                     <span className="text-xs text-muted-foreground">

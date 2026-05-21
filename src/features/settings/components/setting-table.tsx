@@ -21,9 +21,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SettingForm, SettingFormValues } from "./setting-form";
 import { ApiError } from "@/lib/api/client";
+import { qk } from "@/lib/query/keys";
 
 interface BaseItem {
   id: number;
@@ -42,12 +51,13 @@ interface SettingTableProps<
   schema: z.ZodTypeAny;
   onCreate: (data: TSubmit) => Promise<unknown>;
   onUpdate: (id: number, data: TSubmit) => Promise<unknown>;
-  onDelete: (id: number) => Promise<unknown>;
+  onDelete: (id: number, replacement?: number) => Promise<unknown>;
   renderExtraColumns?: (item: TItem) => React.ReactNode;
   renderExtraHeader?: () => React.ReactNode;
   renderExtraFormFields?: () => React.ReactNode;
   getDefaultValues?: (item?: TItem) => SettingFormValues;
   transformSubmitData?: (data: SettingFormValues) => TSubmit;
+  disableReplacementOnDelete?: boolean;
 }
 
 export function SettingTable<
@@ -67,16 +77,20 @@ export function SettingTable<
   renderExtraFormFields,
   getDefaultValues,
   transformSubmitData,
+  disableReplacementOnDelete,
 }: SettingTableProps<TSubmit, TItem>) {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<TItem | null>(null);
+  const [deletingItem, setDeletingItem] = useState<TItem | null>(null);
+  const [replacementId, setReplacementId] = useState<string>("");
   const [serverErrors, setServerErrors] = useState<Record<string, unknown> | null>(null);
 
   const createMutation = useMutation({
     mutationFn: onCreate,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: qk.issues.all });
       setIsDialogOpen(false);
     },
     onError: (err) => {
@@ -92,6 +106,7 @@ export function SettingTable<
     mutationFn: ({ id, data }: { id: number; data: TSubmit }) => onUpdate(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: qk.issues.all });
       setIsDialogOpen(false);
     },
     onError: (err) => {
@@ -104,9 +119,18 @@ export function SettingTable<
   });
 
   const deleteMutation = useMutation({
-    mutationFn: onDelete,
+    mutationFn: ({ id, replacement }: { id: number; replacement?: number }) => onDelete(id, replacement),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
+      queryClient.invalidateQueries({ queryKey: qk.issues.all });
+      setDeletingItem(null);
+    },
+    onError: (err) => {
+      if (err instanceof ApiError) {
+        setServerErrors(err.data as Record<string, unknown>);
+      } else {
+        setServerErrors({ _error: String((err as Error)?.message || "An error occurred") });
+      }
     },
   });
 
@@ -208,9 +232,8 @@ export function SettingTable<
                           size="icon"
                           className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                           onClick={() => {
-                            if (confirm("Are you sure you want to delete this?")) {
-                              deleteMutation.mutate(item.id);
-                            }
+                            setDeletingItem(item);
+                            setReplacementId("");
                           }}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -234,6 +257,57 @@ export function SettingTable<
           </div>
         )}
       </div>
+
+      <Dialog open={!!deletingItem} onOpenChange={(open) => !open && setDeletingItem(null)}>
+        <DialogContent className="max-w-md flex flex-col items-center">
+          <DialogHeader className="w-full flex flex-col items-center mt-2">
+            <DialogTitle className="text-2xl font-normal tracking-wide text-foreground mb-4">Delete value</DialogTitle>
+            <DialogDescription className="text-center font-medium text-foreground text-base uppercase">
+              {deletingItem?.name}
+            </DialogDescription>
+          </DialogHeader>
+          {disableReplacementOnDelete ? (
+            <div className="py-2 w-full text-center px-4">
+              <p className="text-sm text-muted-foreground">This action cannot be undone.</p>
+            </div>
+          ) : (
+            <div className="py-2 w-full text-center px-4">
+              <p className="mb-3 text-sm text-foreground">All items with this value will be changed to</p>
+              <Select value={replacementId} onValueChange={setReplacementId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a replacement..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {data?.filter(i => i.id !== deletingItem?.id).map(i => (
+                    <SelectItem key={i.id} value={i.id.toString()}>{i.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="flex flex-row justify-between w-full items-center mt-6">
+            <Button variant="ghost" onClick={() => setDeletingItem(null)} className="text-[#008484] hover:text-[#008484] hover:underline font-medium px-2 bg-transparent">
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={(!disableReplacementOnDelete && !replacementId) || deleteMutation.isPending}
+              onClick={() => {
+                if (deletingItem) {
+                  const repl = disableReplacementOnDelete ? undefined : parseInt(replacementId, 10);
+                  if (disableReplacementOnDelete || repl) {
+                    deleteMutation.mutate({ id: deletingItem.id, replacement: repl });
+                  }
+                }
+              }}
+              className="bg-[#e03a3e] hover:bg-[#c93236] text-white px-6 shadow-sm rounded-sm uppercase tracking-wide font-medium"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
 
   );

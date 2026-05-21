@@ -73,7 +73,8 @@ export function DueDateSection() {
       schema={dueDateSettingFormSchema}
       onCreate={async (data) => unwrap(await api.POST("/api/settings/due-dates/", { body: data }))}
       onUpdate={async (id, data) => unwrap(await api.PUT("/api/settings/due-dates/{id}/", { params: { path: { id } }, body: data }))}
-      onDelete={async (id) => unwrap(await api.DELETE("/api/settings/due-dates/{id}/", { params: { path: { id } } }))}
+      onDelete={async (id, replacement) => unwrap(await api.DELETE("/api/settings/due-dates/{id}/", { params: { path: { id }, query: replacement ? { replacement } : undefined } }))}
+      disableReplacementOnDelete={true}
       renderExtraHeader={() => (
         <>
           <TableHead>Days to due date</TableHead>

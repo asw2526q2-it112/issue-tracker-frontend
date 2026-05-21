@@ -9,6 +9,7 @@ export default function TagsPage() {
       title="Tags"
       entity="tags"
       useDataHook={useTags}
+      disableReplacementOnDelete={true}
     />
   );
 }

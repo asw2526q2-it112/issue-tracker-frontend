@@ -87,7 +87,7 @@ export function UserSwitcher() {
   function pick(id: string) {
     if (id === current.id) return;
     setCurrentUserId(id);
-    queryClient.invalidateQueries();
+    window.location.reload();
   }
 
   return (

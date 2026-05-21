@@ -70,7 +70,7 @@ export function StatusSection() {
       schema={statusSettingFormSchema}
       onCreate={async (data) => unwrap(await api.POST("/api/settings/statuses/", { body: data }))}
       onUpdate={async (id, data) => unwrap(await api.PUT("/api/settings/statuses/{id}/", { params: { path: { id } }, body: data }))}
-      onDelete={async (id) => unwrap(await api.DELETE("/api/settings/statuses/{id}/", { params: { path: { id } } }))}
+      onDelete={async (id, replacement) => unwrap(await api.DELETE("/api/settings/statuses/{id}/", { params: { path: { id }, query: replacement ? { replacement } : undefined } }))}
       renderExtraHeader={() => (
         <>
           <TableHead>Slug</TableHead>

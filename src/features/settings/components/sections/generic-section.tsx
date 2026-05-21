@@ -28,9 +28,10 @@ interface GenericSectionProps {
     };
     isLoading: boolean;
   };
+  disableReplacementOnDelete?: boolean;
 }
 
-export function GenericSection({ title, entity, useDataHook }: GenericSectionProps) {
+export function GenericSection({ title, entity, useDataHook, disableReplacementOnDelete }: GenericSectionProps) {
   const { data, isLoading } = useDataHook();
 
   const getQueryKey = () => {
@@ -54,7 +55,8 @@ export function GenericSection({ title, entity, useDataHook }: GenericSectionPro
       schema={settingEntityFormSchema}
       onCreate={async (data) => unwrap(await api.POST(getPath(), { body: data }))}
       onUpdate={async (id, data) => unwrap(await api.PUT(getDetailPath(), { params: { path: { id } }, body: data }))}
-      onDelete={async (id) => unwrap(await api.DELETE(getDetailPath(), { params: { path: { id } } }))}
+      onDelete={async (id, replacement) => unwrap(await api.DELETE(getDetailPath(), { params: { path: { id }, query: replacement ? { replacement } : undefined } }))}
+      disableReplacementOnDelete={disableReplacementOnDelete}
     />
   );
 }
